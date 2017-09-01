@@ -2158,7 +2158,7 @@ static int maildir_check_mailbox(struct Context *ctx, int *index_hint)
   }
 
   /* destroy the file name hash */
-  mutt_hash_destroy(&fnames, NULL);
+  mutt_hash_destroy(&fnames);
 
   /* If we didn't just get new mail, update the tables. */
   if (occult)
@@ -2281,7 +2281,7 @@ static int mh_check_mailbox(struct Context *ctx, int *index_hint)
 
   /* destroy the file name hash */
 
-  mutt_hash_destroy(&fnames, NULL);
+  mutt_hash_destroy(&fnames);
 
   /* If we didn't just get new mail, update the tables. */
   if (occult)
