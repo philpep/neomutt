@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "mutt/mutt.h"
+#include "config/sort.h"
 #include "mutt.h"
 #include "alias.h"
 #include "body.h"
