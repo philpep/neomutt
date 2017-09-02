@@ -48,7 +48,7 @@ neomutt_SOURCES = mutt_account.c addrbook.c address.h alias.c alias.h attach.c \
 	curs_lib.c curs_main.c edit.c editmsg.c enter.c enter_state.h \
 	envelope.c envelope.h filter.c flags.c format_flags.h from.c group.c \
 	handler.c hdrline.c header.h header.c help.c history.c hook.c \
-	init.c keymap.c main.c mbox.c mbyte.c mbtable.h \
+	init.c keymap.c main.c mbox.c mbyte.c \
 	menu.c mh.c muttlib.c mutt_idna.c mutt_socket.c \
 	mx.c newsrc.c nntp.c options.h pager.c parameter.c parameter.h \
 	parse.c pattern.c pattern.h pop.c pop_auth.c pop_lib.c postpone.c \
