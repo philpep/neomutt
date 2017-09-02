@@ -27,8 +27,8 @@
 #include <iconv.h>
 #include <string.h>
 #include "mutt/mutt.h"
+#include "config/lib.h"
 #include "rfc2047.h"
-#include "address.h"
 #include "charset.h"
 #include "globals.h"
 #include "mbyte.h"

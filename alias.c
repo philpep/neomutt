@@ -33,8 +33,8 @@
 #include <wchar.h>
 #include <wctype.h>
 #include "mutt/mutt.h"
+#include "config/lib.h"
 #include "mutt.h"
-#include "address.h"
 #include "alias.h"
 #include "charset.h"
 #include "envelope.h"

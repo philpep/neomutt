@@ -37,12 +37,12 @@
 #include <unistd.h>
 #include <wchar.h>
 #include "mutt/mutt.h"
+#include "config/lib.h"
 #include "config/mbtable.h"
 #include "config/sort.h"
 #include "config/types.h"
 #include "mutt.h"
 #include "init.h"
-#include "address.h"
 #include "alias.h"
 #include "charset.h"
 #include "context.h"

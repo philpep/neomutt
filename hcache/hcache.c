@@ -48,7 +48,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "mutt/mutt.h"
-#include "address.h"
+#include "config/lib.h"
 #include "backend.h"
 #include "body.h"
 #include "charset.h"
