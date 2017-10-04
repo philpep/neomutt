@@ -926,7 +926,6 @@ int main(int argc, char **argv, char **env)
       }
     }
 
-    mutt_folder_hook(folder);
     mutt_startup_shutdown_hook(MUTT_STARTUPHOOK);
 
     if ((Context = mx_open_mailbox(
