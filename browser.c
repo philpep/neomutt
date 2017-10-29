@@ -250,7 +250,7 @@ static void browser_sort(struct BrowserState *state)
 #ifdef USE_NNTP
     case SORT_SIZE:
     case SORT_DATE:
-      if (option(OPT_NEWS))
+      if (OPT_NEWS)
         return;
 #endif
     default:
@@ -561,8 +561,7 @@ static const char *newsgroup_format_str(char *dest, size_t destlen, size_t col, 
         snprintf(tmp, sizeof(tmp), "%%%sd", fmt);
         snprintf(dest, destlen, tmp, Context->new);
       }
-      else if (option(OPT_MARK_OLD) &&
-               folder->ff->nd->last_cached >= folder->ff->nd->first_message &&
+      else if (OPT_MARK_OLD && folder->ff->nd->last_cached >= folder->ff->nd->first_message &&
                folder->ff->nd->last_cached <= folder->ff->nd->last_message)
       {
         snprintf(tmp, sizeof(tmp), "%%%sd", fmt);
@@ -639,7 +638,7 @@ static void add_folder(struct Menu *m, struct BrowserState *state, const char *n
   (state->entry)[state->entrylen].imap = false;
 #endif
 #ifdef USE_NNTP
-  if (option(OPT_NEWS))
+  if (OPT_NEWS)
     (state->entry)[state->entrylen].nd = (struct NntpData *) data;
 #endif
   (state->entrylen)++;
@@ -664,7 +663,7 @@ static int examine_directory(struct Menu *menu, struct BrowserState *state,
                              char *d, const char *prefix)
 {
 #ifdef USE_NNTP
-  if (option(OPT_NEWS))
+  if (OPT_NEWS)
   {
     struct NntpServer *nserv = CurrentNewsSrv;
 
@@ -793,7 +792,7 @@ static int examine_mailboxes(struct Menu *menu, struct BrowserState *state)
   char buffer[LONG_STRING];
 
 #ifdef USE_NNTP
-  if (option(OPT_NEWS))
+  if (OPT_NEWS)
   {
     struct NntpServer *nserv = CurrentNewsSrv;
 
@@ -802,9 +801,8 @@ static int examine_mailboxes(struct Menu *menu, struct BrowserState *state)
     for (unsigned int i = 0; i < nserv->groups_num; i++)
     {
       struct NntpData *nntp_data = nserv->groups_list[i];
-      if (nntp_data &&
-          (nntp_data->new || (nntp_data->subscribed &&
-                              (nntp_data->unread || !option(OPT_SHOW_ONLY_UNREAD)))))
+      if (nntp_data && (nntp_data->new || (nntp_data->subscribed &&
+                                           (nntp_data->unread || !OPT_SHOW_ONLY_UNREAD))))
         add_folder(menu, state, nntp_data->group, NULL, NULL, NULL, nntp_data);
     }
   }
@@ -882,7 +880,7 @@ static int examine_mailboxes(struct Menu *menu, struct BrowserState *state)
 static int select_file_search(struct Menu *menu, regex_t *re, int n)
 {
 #ifdef USE_NNTP
-  if (option(OPT_NEWS))
+  if (OPT_NEWS)
     return (regexec(re, ((struct FolderFile *) menu->data)[n].desc, 0, NULL, 0));
 #endif
   return (regexec(re, ((struct FolderFile *) menu->data)[n].name, 0, NULL, 0));
@@ -903,7 +901,7 @@ static void folder_entry(char *s, size_t slen, struct Menu *menu, int num)
   folder.num = num;
 
 #ifdef USE_NNTP
-  if (option(OPT_NEWS))
+  if (OPT_NEWS)
     mutt_expando_format(s, slen, 0, MuttIndexWindow->cols,
                         NONULL(GroupIndexFormat), newsgroup_format_str,
                         (unsigned long) &folder, MUTT_FORMAT_ARROWCURSOR);
@@ -964,7 +962,7 @@ static void init_menu(struct BrowserState *state, struct Menu *menu,
   menu->tagged = 0;
 
 #ifdef USE_NNTP
-  if (option(OPT_NEWS))
+  if (OPT_NEWS)
   {
     if (buffy)
       snprintf(title, titlelen, _("Subscribed newsgroups"));
@@ -1091,7 +1089,7 @@ void mutt_select_file(char *f, size_t flen, int flags, char ***files, int *numfi
   memset(&state, 0, sizeof(struct BrowserState));
 
 #ifdef USE_NNTP
-  if (option(OPT_NEWS))
+  if (OPT_NEWS)
   {
     if (*f)
       mutt_str_strfcpy(prefix, f, sizeof(prefix));
@@ -1308,9 +1306,9 @@ void mutt_select_file(char *f, size_t flen, int flags, char ***files, int *numfi
 
   menu->help = mutt_compile_help(helpstr, sizeof(helpstr), MENU_FOLDER,
 #ifdef USE_NNTP
-                                 option(OPT_NEWS) ? FolderNewsHelp :
+                                 OPT_NEWS ? FolderNewsHelp :
 #endif
-                                                    FolderHelp);
+                                            FolderHelp);
   mutt_push_current_menu(menu);
 
   init_menu(&state, menu, title, sizeof(title), buffy);
@@ -1449,7 +1447,7 @@ void mutt_select_file(char *f, size_t flen, int flags, char ***files, int *numfi
           }
         }
 
-        if (buffy || option(OPT_NEWS)) /* USE_NNTP */
+        if (buffy || OPT_NEWS) /* USE_NNTP */
         {
           mutt_str_strfcpy(f, state.entry[menu->current].name, flen);
           mutt_expand_path(f, flen);
@@ -1510,10 +1508,10 @@ void mutt_select_file(char *f, size_t flen, int flags, char ***files, int *numfi
 
 #ifdef USE_IMAP
       case OP_BROWSER_TOGGLE_LSUB:
-        if (option(OPT_IMAP_LIST_SUBSCRIBED))
-          unset_option(OPT_IMAP_LIST_SUBSCRIBED);
+        if (OPT_IMAP_LIST_SUBSCRIBED)
+          OPT_IMAP_LIST_SUBSCRIBED = false;
         else
-          set_option(OPT_IMAP_LIST_SUBSCRIBED);
+          OPT_IMAP_LIST_SUBSCRIBED = true;
 
         mutt_unget_event(0, OP_CHECK_NEW);
         break;
@@ -1607,7 +1605,7 @@ void mutt_select_file(char *f, size_t flen, int flags, char ***files, int *numfi
       case OP_CHANGE_DIRECTORY:
 
 #ifdef USE_NNTP
-        if (option(OPT_NEWS))
+        if (OPT_NEWS)
           break;
 #endif
 
@@ -1920,7 +1918,7 @@ void mutt_select_file(char *f, size_t flen, int flags, char ***files, int *numfi
 #ifdef USE_NNTP
       case OP_CATCHUP:
       case OP_UNCATCHUP:
-        if (option(OPT_NEWS))
+        if (OPT_NEWS)
         {
           struct FolderFile *ff = &state.entry[menu->current];
           int rc;
@@ -1949,7 +1947,7 @@ void mutt_select_file(char *f, size_t flen, int flags, char ***files, int *numfi
         break;
 
       case OP_LOAD_ACTIVE:
-        if (option(OPT_NEWS))
+        if (OPT_NEWS)
         {
           struct NntpServer *nserv = CurrentNewsSrv;
 
@@ -1983,7 +1981,7 @@ void mutt_select_file(char *f, size_t flen, int flags, char ***files, int *numfi
 #ifdef USE_NNTP
       case OP_SUBSCRIBE_PATTERN:
       case OP_UNSUBSCRIBE_PATTERN:
-        if (option(OPT_NEWS))
+        if (OPT_NEWS)
         {
           struct NntpServer *nserv = CurrentNewsSrv;
           regex_t rx;
