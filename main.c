@@ -944,6 +944,7 @@ int main(int argc, char **argv, char **env)
     mutt_sasl_done();
 #endif
     mutt_free_opts();
+    cs_free(&Config);
     mutt_free_windows();
     mutt_endwin(ErrorBuf);
   }
