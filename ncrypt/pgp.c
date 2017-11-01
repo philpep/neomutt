@@ -192,7 +192,7 @@ static int pgp_copy_checksig(FILE *fpin, FILE *fpout)
 {
   int rv = -1;
 
-  if (PgpGoodSign.pattern)
+  if (PgpGoodSign->pattern)
   {
     char *line = NULL;
     int lineno = 0;
@@ -200,7 +200,7 @@ static int pgp_copy_checksig(FILE *fpin, FILE *fpout)
 
     while ((line = mutt_file_read_line(line, &linelen, fpin, &lineno, 0)) != NULL)
     {
-      if (regexec(PgpGoodSign.regex, line, 0, NULL, 0) == 0)
+      if (regexec(PgpGoodSign->regex, line, 0, NULL, 0) == 0)
       {
         mutt_debug(2, "pgp_copy_checksig: \"%s\" matches regex.\n", line);
         rv = 0;
@@ -236,7 +236,7 @@ static int pgp_check_decryption_okay(FILE *fpin)
 {
   int rv = -1;
 
-  if (PgpDecryptionOkay.pattern)
+  if (PgpDecryptionOkay->pattern)
   {
     char *line = NULL;
     int lineno = 0;
@@ -244,7 +244,7 @@ static int pgp_check_decryption_okay(FILE *fpin)
 
     while ((line = mutt_file_read_line(line, &linelen, fpin, &lineno, 0)) != NULL)
     {
-      if (regexec(PgpDecryptionOkay.regex, line, 0, NULL, 0) == 0)
+      if (regexec(PgpDecryptionOkay->regex, line, 0, NULL, 0) == 0)
       {
         mutt_debug(2, "pgp_check_decryption_okay: \"%s\" matches regex.\n", line);
         rv = 0;

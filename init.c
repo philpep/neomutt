@@ -149,18 +149,19 @@ static int parse_regex(int idx, struct Buffer *tmp, struct Buffer *err)
   int e, flags = 0;
   const char *p = NULL;
   regex_t *rx = NULL;
-  struct Regex *ptr = (struct Regex *) MuttVars[idx].var;
+  struct Regex *ptr = *(struct Regex **) MuttVars[idx].var;
 
   if (!ptr->pattern || (mutt_str_strcmp(ptr->pattern, tmp->data) != 0))
   {
     bool not = false;
 
-    /* $mask is case-sensitive */
-    if (mutt_str_strcmp(MuttVars[idx].name, "mask") != 0)
+    /* Should we use smart case matching? */
+    if ((MuttVars[idx].flags & DT_REGEX_MATCH_CASE) == 0)
       flags |= mutt_which_case(tmp->data);
 
     p = tmp->data;
-    if (mutt_str_strcmp(MuttVars[idx].name, "mask") == 0)
+    /* Is a prefix of '!' allowed? */
+    if ((MuttVars[idx].flags & DT_REGEX_ALLOW_NOT) != 0)
     {
       if (*p == '!')
       {
@@ -379,7 +380,7 @@ int mutt_option_set(const struct ConfigDef *val, struct Buffer *err)
               struct Envelope *e = Context->hdrs[i]->env;
               if (e && e->subject)
               {
-                e->real_subj = (regexec(ReplyRegexp.regex, e->subject, 1, pmatch, 0)) ?
+                e->real_subj = (regexec(ReplyRegexp->regex, e->subject, 1, pmatch, 0)) ?
                                    e->subject :
                                    e->subject + pmatch[0].rm_eo;
               }
@@ -2677,13 +2678,9 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
             break;
           }
 #endif
-          /* MuttVars[idx].var is already 'char**' (or some 'void**') or...
-           * so cast to 'void*' is okay */
-          FREE((void *) MuttVars[idx].var);
-
           mutt_str_strfcpy(scratch, tmp->data, sizeof(scratch));
           mutt_expand_path(scratch, sizeof(scratch));
-          *((char **) MuttVars[idx].var) = mutt_str_strdup(scratch);
+          cs_str_string_set(Config, MuttVars[idx].name, scratch, NULL);
 #ifdef DEBUG
           if (mutt_str_strcmp(MuttVars[idx].name, "debug_file") == 0)
             restart_debug();
@@ -2702,8 +2699,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
             return -1;
           }
 
-          FREE((void *) MuttVars[idx].var);
-          *((char **) MuttVars[idx].var) = mutt_str_strdup(tmp->data);
+          cs_str_string_set(Config, MuttVars[idx].name, tmp->data, NULL);
           if (mutt_str_strcmp(MuttVars[idx].name, "charset") == 0)
             mutt_set_charset(Charset);
 
@@ -2766,7 +2762,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
             struct Envelope *e = Context->hdrs[i]->env;
             if (e && e->subject)
             {
-              e->real_subj = (regexec(ReplyRegexp.regex, e->subject, 1, pmatch, 0)) ?
+              e->real_subj = (regexec(ReplyRegexp->regex, e->subject, 1, pmatch, 0)) ?
                                  e->subject :
                                  e->subject + pmatch[0].rm_eo;
             }

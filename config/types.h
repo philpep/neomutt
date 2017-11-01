@@ -39,8 +39,10 @@
 
 #define DTYPE(x) ((x) & DT_MASK)
 
-/* subtypes */
+/* subtypes for... */
 #define DT_SUBTYPE_MASK 0xff0
+
+/* ... DT_SORT */
 #define DT_SORT_INDEX   0x000
 #define DT_SORT_ALIAS   0x010
 #define DT_SORT_BROWSER 0x020
@@ -48,6 +50,11 @@
 #define DT_SORT_AUX     0x080
 #define DT_SORT_SIDEBAR 0x100
 
+/* ... DT_REGEX */
+#define DT_REGEX_MATCH_CASE 0x010 /**< Case-sensitive matching */
+#define DT_REGEX_ALLOW_NOT  0x020 /**< Regex can begin with '!' */
+
+/* Private config flags */
 #define DT_INHERITED    0x200
 #define DT_INITIAL_SET  0x400
 

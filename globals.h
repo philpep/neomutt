@@ -125,7 +125,7 @@ WHERE char *Attribution;
 WHERE char *AttributionLocale;
 WHERE char *AttachCharset;
 WHERE char *AttachFormat;
-WHERE struct Regex AttachKeyword;
+WHERE struct Regex *AttachKeyword;
 WHERE char *Charset;
 WHERE char *ComposeFormat;
 WHERE char *ConfigCharset;
@@ -288,8 +288,8 @@ WHERE short ImapPollTimeout;
 #endif
 
 /* -- formerly in pgp.h -- */
-WHERE struct Regex PgpGoodSign;
-WHERE struct Regex PgpDecryptionOkay;
+WHERE struct Regex *PgpGoodSign;
+WHERE struct Regex *PgpDecryptionOkay;
 WHERE char *PgpSignAs;
 WHERE short PgpTimeout;
 WHERE char *PgpEntryFormat;
