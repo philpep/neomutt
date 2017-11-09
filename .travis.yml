@@ -14,4 +14,5 @@ before_install:
   - source ./macports/bootstrap.sh
 script:
   - sed -i '' "s|@@REPO_PATH@@|${PWD}|g" macports/Portfile
-  - sudo port destroot "file://${PWD}/macports" || (port log "file://${PWD}/macports" | tail -n 1000)
+  - sudo port install "file://${PWD}/macports" || (port log "file://${PWD}/macports" | tail -n 1000)
+  - port contents "file://${PWD}/macports"
