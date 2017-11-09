@@ -4,37 +4,14 @@ notifications:
 os: osx
 
 language: c
-compiler: gcc
-
-# addons:
-#   apt:
-#     packages:
-#       - libgpgme11-dev
-#       - libnotmuch-dev
-#       - libtokyocabinet-dev
-#       - libkyotocabinet-dev
-#       - libgdbm-dev
-#       - libdb-dev
-#       - liblmdb-dev
-#       - libqdbm-dev
-#       - libslang2-dev
-#       - libgnutls-dev
-#       - libssl-dev
-#       - libsasl2-dev
-#       - libgss-dev
-#       - xsltproc
-#       - lynx
-#       - docbook-simple
-#       - docbook-xsl
-#       - libxml2-utils
-#       - gettext
-#       - lua5.2
-#       - liblua5.2-dev
-#       - autopoint
 
 git:
   depth: 3
 
+env:
+  - COLUMNS=78
+before_install:
+  - source ./macports/bootstrap.sh
 script:
-  - ./configure.autosetup && make
-
+  - sed -i '' "s|@@REPO_PATH@@|${PWD}|g" macports/Portfile
+  - sudo port -v install "file://${PWD}/macports"
