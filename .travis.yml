@@ -16,3 +16,4 @@ script:
   - sed -i '' "s|@@REPO_PATH@@|${PWD}|g" macports/Portfile
   - sudo port install "file://${PWD}/macports" || (port log "file://${PWD}/macports" | tail -n 1000)
   - port contents "file://${PWD}/macports"
+  - neomutt -v
