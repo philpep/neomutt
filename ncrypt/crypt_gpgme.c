@@ -1757,7 +1757,7 @@ static int verify_one(struct Body *sigbdy, struct State *s, const char *tempfile
   gpgme_release(ctx);
 
   state_attach_puts(_("[-- End signature information --]\n\n"), s);
-  mutt_debug(1, "verify_one: returning %d.\n", badsig);
+  mutt_debug(1, "returning %d.\n", badsig);
 
   return badsig ? 1 : anywarn ? 2 : 0;
 }
@@ -4356,8 +4356,7 @@ static struct CryptKeyInfo *crypt_getkeybyaddr(struct Address *a,
   if (!keys)
     return NULL;
 
-  mutt_debug(5, "crypt_getkeybyaddr: looking for %s <%s>.\n",
-             a ? a->personal : "", a ? a->mailbox : "");
+  mutt_debug(5, "looking for %s <%s>.\n", a ? a->personal : "", a ? a->mailbox : "");
 
   for (k = keys; k; k = k->next)
   {
@@ -4479,7 +4478,7 @@ static struct CryptKeyInfo *crypt_getkeybystr(char *p, short abilities,
     if (abilities && !(k->flags & abilities))
       continue;
 
-    mutt_debug(5, "crypt_getkeybystr: matching \"%s\" against "
+    mutt_debug(5, "matching \"%s\" against "
                   "key %s, \"%s\": ",
                p, crypt_long_keyid(k), k->uid);
 

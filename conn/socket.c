@@ -186,7 +186,7 @@ int mutt_socket_close(struct Connection *conn)
   int rc = -1;
 
   if (conn->fd < 0)
-    mutt_debug(1, "mutt_socket_close: Attempt to close closed connection.\n");
+    mutt_debug(1, "Attempt to close closed connection.\n");
   else
     rc = conn->conn_close(conn);
 
@@ -276,8 +276,7 @@ int mutt_socket_readchar(struct Connection *conn, char *c)
       conn->available = conn->conn_read(conn, conn->inbuf, sizeof(conn->inbuf));
     else
     {
-      mutt_debug(
-          1, "mutt_socket_readchar: attempt to read from closed connection.\n");
+      mutt_debug(1, "attempt to read from closed connection.\n");
       return -1;
     }
     conn->bufpos = 0;

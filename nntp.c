@@ -338,7 +338,7 @@ static int nntp_auth(struct NntpServer *nserv)
       p++;
     }
 
-    mutt_debug(1, "nntp_auth: available methods: %s\n", nserv->authenticators);
+    mutt_debug(1, "available methods: %s\n", nserv->authenticators);
     a = authenticators;
     while (true)
     {
@@ -370,7 +370,7 @@ static int nntp_auth(struct NntpServer *nserv)
         if (*m != '\0' && *m != ' ')
           continue;
       }
-      mutt_debug(1, "nntp_auth: trying method %s\n", method);
+      mutt_debug(1, "trying method %s\n", method);
 
       /* AUTHINFO USER authentication */
       if (strcmp(method, "USER") == 0)
@@ -420,7 +420,7 @@ static int nntp_auth(struct NntpServer *nserv)
 
         if (mutt_sasl_client_new(conn, &saslconn) < 0)
         {
-          mutt_debug(1, "nntp_auth: error allocating SASL connection.\n");
+          mutt_debug(1, "error allocating SASL connection.\n");
           continue;
         }
 
@@ -435,8 +435,7 @@ static int nntp_auth(struct NntpServer *nserv)
         if (rc != SASL_OK && rc != SASL_CONTINUE)
         {
           sasl_dispose(&saslconn);
-          mutt_debug(
-              1, "nntp_auth: error starting SASL authentication exchange.\n");
+          mutt_debug(1, "error starting SASL authentication exchange.\n");
           continue;
         }
 
@@ -470,8 +469,7 @@ static int nntp_auth(struct NntpServer *nserv)
             if (sasl_encode64(client_out, client_len, buf + len,
                               sizeof(buf) - len, &len) != SASL_OK)
             {
-              mutt_debug(1,
-                         "nntp_auth: error base64-encoding client response.\n");
+              mutt_debug(1, "error base64-encoding client response.\n");
               break;
             }
           }
@@ -513,8 +511,7 @@ static int nntp_auth(struct NntpServer *nserv)
           else if (sasl_decode64(inbuf + 4, strlen(inbuf + 4), buf,
                                  sizeof(buf) - 1, &len) != SASL_OK)
           {
-            mutt_debug(1,
-                       "nntp_auth: error base64-decoding server response.\n");
+            mutt_debug(1, "error base64-decoding server response.\n");
             break;
           }
 #ifdef DEBUG
@@ -1071,7 +1068,7 @@ static int parse_overview_line(char *line, void *data)
     *field++ = '\0';
   if (sscanf(line, ANUM, &anum) != 1)
     return 0;
-  mutt_debug(2, "parse_overview_line: " ANUM "\n", anum);
+  mutt_debug(2, "" ANUM "\n", anum);
 
   /* out of bounds */
   if (anum < fc->first || anum > fc->last)
@@ -1143,7 +1140,7 @@ static int parse_overview_line(char *line, void *data)
     hdata = mutt_hcache_fetch(fc->hc, buf, strlen(buf));
     if (hdata)
     {
-      mutt_debug(2, "parse_overview_line: mutt_hcache_fetch %s\n", buf);
+      mutt_debug(2, "mutt_hcache_fetch %s\n", buf);
       mutt_free_header(&hdr);
       ctx->hdrs[ctx->msgcount] = hdr = mutt_hcache_restore(hdata);
       mutt_hcache_free(fc->hc, &hdata);
@@ -1156,7 +1153,7 @@ static int parse_overview_line(char *line, void *data)
       {
         if (nntp_data->bcache)
         {
-          mutt_debug(2, "parse_overview_line: mutt_bcache_del %s\n", buf);
+          mutt_debug(2, "mutt_bcache_del %s\n", buf);
           mutt_bcache_del(nntp_data->bcache, buf);
         }
         save = false;
@@ -1166,7 +1163,7 @@ static int parse_overview_line(char *line, void *data)
     /* not cached yet, store header */
     else
     {
-      mutt_debug(2, "parse_overview_line: mutt_hcache_store %s\n", buf);
+      mutt_debug(2, "mutt_hcache_store %s\n", buf);
       mutt_hcache_store(fc->hc, buf, strlen(buf), hdr, 0);
     }
   }
@@ -1257,14 +1254,14 @@ static int nntp_fetch_headers(struct Context *ctx, void *hc, anum_t first,
         snprintf(buf, sizeof(buf), "%d", current);
         if (nntp_data->bcache)
         {
-          mutt_debug(2, "nntp_fetch_headers: mutt_bcache_del %s\n", buf);
+          mutt_debug(2, "mutt_bcache_del %s\n", buf);
           mutt_bcache_del(nntp_data->bcache, buf);
         }
 
 #ifdef USE_HCACHE
         if (fc.hc)
         {
-          mutt_debug(2, "nntp_fetch_headers: mutt_hcache_delete %s\n", buf);
+          mutt_debug(2, "mutt_hcache_delete %s\n", buf);
           mutt_hcache_delete(fc.hc, buf, strlen(buf));
         }
 #endif
@@ -1301,7 +1298,7 @@ static int nntp_fetch_headers(struct Context *ctx, void *hc, anum_t first,
     hdata = mutt_hcache_fetch(fc.hc, buf, strlen(buf));
     if (hdata)
     {
-      mutt_debug(2, "nntp_fetch_headers: mutt_hcache_fetch %s\n", buf);
+      mutt_debug(2, "mutt_hcache_fetch %s\n", buf);
       ctx->hdrs[ctx->msgcount] = hdr = mutt_hcache_restore(hdata);
       mutt_hcache_free(fc.hc, &hdata);
       hdr->data = 0;
@@ -1312,7 +1309,7 @@ static int nntp_fetch_headers(struct Context *ctx, void *hc, anum_t first,
         mutt_free_header(&hdr);
         if (nntp_data->bcache)
         {
-          mutt_debug(2, "nntp_fetch_headers: mutt_bcache_del %s\n", buf);
+          mutt_debug(2, "mutt_bcache_del %s\n", buf);
           mutt_bcache_del(nntp_data->bcache, buf);
         }
         continue;
@@ -1373,7 +1370,7 @@ static int nntp_fetch_headers(struct Context *ctx, void *hc, anum_t first,
         if (nntp_data->bcache)
         {
           snprintf(buf, sizeof(buf), "%d", current);
-          mutt_debug(2, "nntp_fetch_headers: mutt_bcache_del %s\n", buf);
+          mutt_debug(2, "mutt_bcache_del %s\n", buf);
           mutt_bcache_del(nntp_data->bcache, buf);
         }
         rc = 0;
@@ -1912,7 +1909,7 @@ static int check_mailbox(struct Context *ctx)
         {
           bool deleted;
 
-          mutt_debug(2, "nntp_check_mailbox: mutt_hcache_fetch %s\n", buf);
+          mutt_debug(2, "mutt_hcache_fetch %s\n", buf);
           hdr = mutt_hcache_restore(hdata);
           mutt_hcache_free(hc, &hdata);
           hdr->data = 0;
@@ -1956,7 +1953,7 @@ static int check_mailbox(struct Context *ctx)
       hdata = mutt_hcache_fetch(hc, buf, strlen(buf));
       if (hdata)
       {
-        mutt_debug(2, "nntp_check_mailbox: mutt_hcache_fetch %s\n", buf);
+        mutt_debug(2, "mutt_hcache_fetch %s\n", buf);
         if (ctx->msgcount >= ctx->hdrmax)
           mx_alloc_memory(ctx);
 
@@ -1968,7 +1965,7 @@ static int check_mailbox(struct Context *ctx)
           mutt_free_header(&hdr);
           if (nntp_data->bcache)
           {
-            mutt_debug(2, "nntp_check_mailbox: mutt_bcache_del %s\n", buf);
+            mutt_debug(2, "mutt_bcache_del %s\n", buf);
             mutt_bcache_del(nntp_data->bcache, buf);
           }
           continue;
@@ -2090,7 +2087,7 @@ static int nntp_sync_mailbox(struct Context *ctx, int *index_hint)
     snprintf(buf, sizeof(buf), "%d", NHDR(hdr)->article_num);
     if (nntp_data->bcache && hdr->deleted)
     {
-      mutt_debug(2, "nntp_sync_mailbox: mutt_bcache_del %s\n", buf);
+      mutt_debug(2, "mutt_bcache_del %s\n", buf);
       mutt_bcache_del(nntp_data->bcache, buf);
     }
 
@@ -2099,7 +2096,7 @@ static int nntp_sync_mailbox(struct Context *ctx, int *index_hint)
     {
       if (hdr->deleted && !hdr->read)
         nntp_data->unread--;
-      mutt_debug(2, "nntp_sync_mailbox: mutt_hcache_store %s\n", buf);
+      mutt_debug(2, "mutt_hcache_store %s\n", buf);
       mutt_hcache_store(hc, buf, strlen(buf), hdr, 0);
     }
 #endif
@@ -2168,7 +2165,7 @@ static int nntp_date(struct NntpServer *nserv, time_t *now)
       *now = timegm(&tm);
       if (*now >= 0)
       {
-        mutt_debug(1, "nntp_date: server time is %lu\n", *now);
+        mutt_debug(1, "server time is %lu\n", *now);
         return 0;
       }
     }

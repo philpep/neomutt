@@ -215,14 +215,14 @@ static char *msg_parse_flags(struct ImapHeader *h, char *s)
   /* sanity-check string */
   if (mutt_str_strncasecmp("FLAGS", s, 5) != 0)
   {
-    mutt_debug(1, "msg_parse_flags: not a FLAGS response: %s\n", s);
+    mutt_debug(1, "not a FLAGS response: %s\n", s);
     return NULL;
   }
   s += 5;
   SKIPWS(s);
   if (*s != '(')
   {
-    mutt_debug(1, "msg_parse_flags: bogus FLAGS response: %s\n", s);
+    mutt_debug(1, "bogus FLAGS response: %s\n", s);
     return NULL;
   }
   s++;
@@ -291,7 +291,7 @@ static char *msg_parse_flags(struct ImapHeader *h, char *s)
     s++;
   else
   {
-    mutt_debug(1, "msg_parse_flags: Unterminated FLAGS response: %s\n", s);
+    mutt_debug(1, "Unterminated FLAGS response: %s\n", s);
     return NULL;
   }
 
@@ -338,7 +338,7 @@ static int msg_parse_fetch(struct ImapHeader *h, char *s)
       SKIPWS(s);
       if (*s != '\"')
       {
-        mutt_debug(1, "msg_parse_fetch(): bogus INTERNALDATE entry: %s\n", s);
+        mutt_debug(1, "bogus INTERNALDATE entry: %s\n", s);
         return -1;
       }
       s++;
@@ -729,7 +729,7 @@ int imap_read_headers(struct ImapData *idata, unsigned int msn_begin, unsigned i
 
         if (!h.data->uid)
         {
-          mutt_debug(2, "imap_read_headers: skipping hcache FETCH "
+          mutt_debug(2, "skipping hcache FETCH "
                         "response for message number %d missing a UID\n",
                      h.data->msn);
           continue;
@@ -737,7 +737,7 @@ int imap_read_headers(struct ImapData *idata, unsigned int msn_begin, unsigned i
 
         if (h.data->msn < 1 || h.data->msn > msn_end)
         {
-          mutt_debug(1, "imap_read_headers: skipping hcache FETCH "
+          mutt_debug(1, "skipping hcache FETCH "
                         "response for unknown message number %d\n",
                      h.data->msn);
           continue;
@@ -745,7 +745,7 @@ int imap_read_headers(struct ImapData *idata, unsigned int msn_begin, unsigned i
 
         if (idata->msn_index[h.data->msn - 1])
         {
-          mutt_debug(2, "imap_read_headers: skipping hcache FETCH "
+          mutt_debug(2, "skipping hcache FETCH "
                         "for duplicate message %d\n",
                      h.data->msn);
           continue;
@@ -858,7 +858,7 @@ int imap_read_headers(struct ImapData *idata, unsigned int msn_begin, unsigned i
 
         if (h.data->msn < 1 || h.data->msn > fetch_msn_end)
         {
-          mutt_debug(1, "imap_read_headers: skipping FETCH response for "
+          mutt_debug(1, "skipping FETCH response for "
                         "unknown message number %d\n",
                      h.data->msn);
           continue;
@@ -867,7 +867,7 @@ int imap_read_headers(struct ImapData *idata, unsigned int msn_begin, unsigned i
         /* May receive FLAGS updates in a separate untagged response (#2935) */
         if (idata->msn_index[h.data->msn - 1])
         {
-          mutt_debug(2, "imap_read_headers: skipping FETCH response for "
+          mutt_debug(2, "skipping FETCH response for "
                         "duplicate message %d\n",
                      h.data->msn);
           continue;
@@ -1319,7 +1319,7 @@ int imap_append_message(struct Context *ctx, struct Message *msg)
   {
     char *pc = NULL;
 
-    mutt_debug(1, "imap_append_message(): command failed: %s\n", idata->buf);
+    mutt_debug(1, "command failed: %s\n", idata->buf);
 
     pc = idata->buf + SEQLEN;
     SKIPWS(pc);
@@ -1359,7 +1359,7 @@ int imap_append_message(struct Context *ctx, struct Message *msg)
   {
     char *pc = NULL;
 
-    mutt_debug(1, "imap_append_message(): command failed: %s\n", idata->buf);
+    mutt_debug(1, "command failed: %s\n", idata->buf);
     pc = idata->buf + SEQLEN;
     SKIPWS(pc);
     pc = imap_next_word(pc);
@@ -1402,21 +1402,20 @@ int imap_copy_messages(struct Context *ctx, struct Header *h, char *dest, int de
 
   if (imap_parse_path(dest, &mx))
   {
-    mutt_debug(1, "imap_copy_messages: bad destination %s\n", dest);
+    mutt_debug(1, "bad destination %s\n", dest);
     return -1;
   }
 
   /* check that the save-to folder is in the same account */
   if (!mutt_account_match(&(idata->conn->account), &(mx.account)))
   {
-    mutt_debug(3, "imap_copy_messages: %s not same server as %s\n", dest, ctx->path);
+    mutt_debug(3, "%s not same server as %s\n", dest, ctx->path);
     return 1;
   }
 
   if (h && h->attach_del)
   {
-    mutt_debug(
-        3, "imap_copy_messages: Message contains attachments to be deleted\n");
+    mutt_debug(3, "Message contains attachments to be deleted\n");
     return 1;
   }
 
@@ -1444,7 +1443,7 @@ int imap_copy_messages(struct Context *ctx, struct Header *h, char *dest, int de
 
         if (ctx->hdrs[i]->attach_del)
         {
-          mutt_debug(3, "imap_copy_messages: Message contains attachments to "
+          mutt_debug(3, "Message contains attachments to "
                         "be deleted\n");
           return 1;
         }
@@ -1454,7 +1453,7 @@ int imap_copy_messages(struct Context *ctx, struct Header *h, char *dest, int de
           rc = imap_sync_message_for_copy(idata, ctx->hdrs[i], &sync_cmd, &err_continue);
           if (rc < 0)
           {
-            mutt_debug(1, "imap_copy_messages: could not sync\n");
+            mutt_debug(1, "could not sync\n");
             goto out;
           }
         }
@@ -1463,7 +1462,7 @@ int imap_copy_messages(struct Context *ctx, struct Header *h, char *dest, int de
       rc = imap_exec_msgset(idata, "UID COPY", mmbox, MUTT_TAG, 0, 0);
       if (!rc)
       {
-        mutt_debug(1, "imap_copy_messages: No messages tagged\n");
+        mutt_debug(1, "No messages tagged\n");
         rc = -1;
         goto out;
       }
@@ -1485,7 +1484,7 @@ int imap_copy_messages(struct Context *ctx, struct Header *h, char *dest, int de
         rc = imap_sync_message_for_copy(idata, h, &sync_cmd, &err_continue);
         if (rc < 0)
         {
-          mutt_debug(1, "imap_copy_messages: could not sync\n");
+          mutt_debug(1, "could not sync\n");
           goto out;
         }
       }
@@ -1509,7 +1508,7 @@ int imap_copy_messages(struct Context *ctx, struct Header *h, char *dest, int de
       /* bail out if command failed for reasons other than nonexistent target */
       if (mutt_str_strncasecmp(imap_get_qualifier(idata->buf), "[TRYCREATE]", 11) != 0)
         break;
-      mutt_debug(3, "imap_copy_messages: server suggests TRYCREATE\n");
+      mutt_debug(3, "server suggests TRYCREATE\n");
       snprintf(prompt, sizeof(prompt), _("Create %s?"), mbox);
       if (option(OPT_CONFIRMCREATE) && mutt_yesorno(prompt, 1) != MUTT_YES)
       {
@@ -1647,7 +1646,7 @@ char *imap_set_flags(struct ImapData *idata, struct Header *h, char *s, int *ser
 
   memcpy(&old_hd, hd, sizeof(old_hd));
 
-  mutt_debug(2, "imap_set_flags: parsing FLAGS\n");
+  mutt_debug(2, "parsing FLAGS\n");
   s = msg_parse_flags(&newh, s);
   if (!s)
     return NULL;

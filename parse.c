@@ -155,14 +155,14 @@ static struct Parameter *parse_parameters(const char *s)
   const char *p = NULL;
   size_t i;
 
-  mutt_debug(2, "parse_parameters: `%s'\n", s);
+  mutt_debug(2, "`%s'\n", s);
 
   while (*s)
   {
     p = strpbrk(s, "=;");
     if (!p)
     {
-      mutt_debug(1, "parse_parameters: malformed parameter: %s\n", s);
+      mutt_debug(1, "malformed parameter: %s\n", s);
       goto bail;
     }
 
@@ -179,7 +179,7 @@ static struct Parameter *parse_parameters(const char *s)
        */
       if (i == 0)
       {
-        mutt_debug(1, "parse_parameters: missing attribute: %s\n", s);
+        mutt_debug(1, "missing attribute: %s\n", s);
         new = NULL;
       }
       else
@@ -251,7 +251,7 @@ static struct Parameter *parse_parameters(const char *s)
     }
     else
     {
-      mutt_debug(1, "parse_parameters(): parameter with no value: %s\n", s);
+      mutt_debug(1, "parameter with no value: %s\n", s);
       s = p;
     }
 
@@ -442,8 +442,7 @@ struct Body *mutt_read_mime_header(FILE *fp, int digest)
       c = mutt_str_skip_email_wsp(c + 1);
       if (!*c)
       {
-        mutt_debug(1,
-                   "mutt_read_mime_header(): skipping empty header field: %s\n", line);
+        mutt_debug(1, "skipping empty header field: %s\n", line);
         continue;
       }
     }

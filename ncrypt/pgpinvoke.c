@@ -147,7 +147,7 @@ static void mutt_pgp_command(char *d, size_t dlen,
 {
   mutt_expando_format(d, dlen, 0, MuttIndexWindow->cols, NONULL(fmt),
                       fmt_pgp_command, (unsigned long) cctx, 0);
-  mutt_debug(2, "mutt_pgp_command: %s\n", d);
+  mutt_debug(2, "%s\n", d);
 }
 
 /*

@@ -440,7 +440,7 @@ int mutt_write_mime_body(struct Body *a, FILE *f)
     p = mutt_get_parameter("boundary", a->parameter);
     if (!p)
     {
-      mutt_debug(1, "mutt_write_mime_body(): no boundary parameter found!\n");
+      mutt_debug(1, "no boundary parameter found!\n");
       mutt_error(_("No boundary parameter found! [report this error]"));
       return -1;
     }
@@ -932,8 +932,7 @@ struct Content *mutt_get_content_info(const char *fname, struct Body *b)
   fp = fopen(fname, "r");
   if (!fp)
   {
-    mutt_debug(1, "mutt_get_content_info: %s: %s (errno %d).\n", fname,
-               strerror(errno), errno);
+    mutt_debug(1, "%s: %s (errno %d).\n", fname, strerror(errno), errno);
     return NULL;
   }
 
@@ -1033,7 +1032,7 @@ int mutt_lookup_mime_type(struct Body *att, const char *path)
         snprintf(buf, sizeof(buf), "%s/.mime.types", NONULL(HomeDir));
         break;
       default:
-        mutt_debug(1, "mutt_lookup_mime_type: Internal error, count = %d.\n", count);
+        mutt_debug(1, "Internal error, count = %d.\n", count);
         goto bye; /* shouldn't happen */
     }
 
@@ -2848,7 +2847,7 @@ struct Address *mutt_remove_duplicates(struct Address *addr)
 
     if (dup)
     {
-      mutt_debug(2, "mutt_remove_duplicates: Removing %s\n", addr->mailbox);
+      mutt_debug(2, "Removing %s\n", addr->mailbox);
 
       *last = addr->next;
 
@@ -2943,7 +2942,7 @@ int mutt_write_fcc(const char *path, struct Header *hdr, const char *msgid,
   mutt_folder_hook(path);
   if (mx_open_mailbox(path, MUTT_APPEND | MUTT_QUIET, &f) == NULL)
   {
-    mutt_debug(1, "mutt_write_fcc(): unable to open mailbox %s in append-mode, "
+    mutt_debug(1, "unable to open mailbox %s in append-mode, "
                   "aborting.\n",
                path);
     return -1;
@@ -3088,7 +3087,7 @@ int mutt_write_fcc(const char *path, struct Header *hdr, const char *msgid,
     fflush(tempfp);
     if (ferror(tempfp))
     {
-      mutt_debug(1, "mutt_write_fcc(): %s: write failed.\n", tempfile);
+      mutt_debug(1, "%s: write failed.\n", tempfile);
       mutt_file_fclose(&tempfp);
       unlink(tempfile);
       mx_commit_message(msg, &f); /* XXX - really? */

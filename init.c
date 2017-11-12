@@ -318,7 +318,7 @@ static struct MbTable *parse_mbtable(const char *s)
   {
     if (k == (size_t)(-1) || k == (size_t)(-2))
     {
-      mutt_debug(1, "parse_mbtable: mbrtowc returned %d converting %s in %s\n",
+      mutt_debug(1, "mbrtowc returned %d converting %s in %s\n",
                  (k == (size_t)(-1)) ? -1 : -2, s, t->orig_str);
       if (k == (size_t)(-1))
         memset(&mbstate, 0, sizeof(mbstate));
@@ -1596,7 +1596,7 @@ static int parse_attach_list(struct Buffer *buf, struct Buffer *s,
       return -1;
     }
 
-    mutt_debug(5, "parse_attach_list: added %s/%s [%d]\n", a->major, a->minor, a->major_int);
+    mutt_debug(5, "added %s/%s [%d]\n", a->major, a->minor, a->major_int);
 
     mutt_list_insert_tail(head, (char *) a);
   } while (MoreArgs(s));
@@ -1640,12 +1640,11 @@ static int parse_unattach_list(struct Buffer *buf, struct Buffer *s,
     STAILQ_FOREACH_SAFE(np, head, entries, tmp2)
     {
       a = (struct AttachMatch *) np->data;
-      mutt_debug(5, "parse_unattach_list: check %s/%s [%d] : %s/%s [%d]\n",
-                 a->major, a->minor, a->major_int, tmp, minor, major);
+      mutt_debug(5, "check %s/%s [%d] : %s/%s [%d]\n", a->major, a->minor,
+                 a->major_int, tmp, minor, major);
       if (a->major_int == major && (mutt_str_strcasecmp(minor, a->minor) == 0))
       {
-        mutt_debug(5, "parse_unattach_list: removed %s/%s [%d]\n", a->major,
-                   a->minor, a->major_int);
+        mutt_debug(5, "removed %s/%s [%d]\n", a->major, a->minor, a->major_int);
         regfree(&a->minor_regex);
         FREE(&a->major);
         STAILQ_REMOVE(head, np, ListNode, entries);
@@ -1931,7 +1930,7 @@ static int parse_alias(struct Buffer *buf, struct Buffer *s, unsigned long data,
   }
 
   mutt_extract_token(buf, s, MUTT_TOKEN_QUOTE | MUTT_TOKEN_SPACE | MUTT_TOKEN_SEMICOLON);
-  mutt_debug(3, "parse_alias: Second token is '%s'.\n", buf->data);
+  mutt_debug(3, "Second token is '%s'.\n", buf->data);
 
   tmp->addr = mutt_parse_adrlist(tmp->addr, buf->data);
 
@@ -1957,9 +1956,9 @@ static int parse_alias(struct Buffer *buf, struct Buffer *s, unsigned long data,
     for (struct Address *a = tmp->addr; a && a->mailbox; a = a->next)
     {
       if (!a->group)
-        mutt_debug(3, "parse_alias:   %s\n", a->mailbox);
+        mutt_debug(3, "  %s\n", a->mailbox);
       else
-        mutt_debug(3, "parse_alias:   Group %s\n", a->mailbox);
+        mutt_debug(3, "  Group %s\n", a->mailbox);
     }
   }
 #endif

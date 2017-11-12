@@ -104,7 +104,7 @@ static struct ImapCommand *cmd_new(struct ImapData *idata)
 
   if (cmd_queue_full(idata))
   {
-    mutt_debug(3, "cmd_new: IMAP command queue full\n");
+    mutt_debug(3, "IMAP command queue full\n");
     return NULL;
   }
 
@@ -834,14 +834,12 @@ static int cmd_handle_untagged(struct ImapData *idata)
       /* at least the InterChange server sends EXISTS messages freely,
        * even when there is no new mail */
       else if (count == idata->max_msn)
-        mutt_debug(3, "cmd_handle_untagged: superfluous EXISTS message.\n");
+        mutt_debug(3, "superfluous EXISTS message.\n");
       else
       {
         if (!(idata->reopen & IMAP_EXPUNGE_PENDING))
         {
-          mutt_debug(
-              2, "cmd_handle_untagged: New mail in %s - %d messages total.\n",
-              idata->mailbox, count);
+          mutt_debug(2, "New mail in %s - %d messages total.\n", idata->mailbox, count);
           idata->reopen |= IMAP_NEWMAIL_PENDING;
         }
         idata->new_mail_count = count;
@@ -945,7 +943,7 @@ int imap_cmd_step(struct ImapData *idata)
     {
       mutt_mem_realloc(&idata->buf, idata->blen + IMAP_CMD_BUFSIZE);
       idata->blen = idata->blen + IMAP_CMD_BUFSIZE;
-      mutt_debug(3, "imap_cmd_step: grew buffer to %u bytes\n", idata->blen);
+      mutt_debug(3, "grew buffer to %u bytes\n", idata->blen);
     }
 
     /* back up over '\0' */
@@ -954,7 +952,7 @@ int imap_cmd_step(struct ImapData *idata)
     c = mutt_socket_readln(idata->buf + len, idata->blen - len, idata->conn);
     if (c <= 0)
     {
-      mutt_debug(1, "imap_cmd_step: Error reading server response.\n");
+      mutt_debug(1, "Error reading server response.\n");
       cmd_handle_fatal(idata);
       return IMAP_CMD_BAD;
     }
@@ -971,7 +969,7 @@ int imap_cmd_step(struct ImapData *idata)
   {
     mutt_mem_realloc(&idata->buf, IMAP_CMD_BUFSIZE);
     idata->blen = IMAP_CMD_BUFSIZE;
-    mutt_debug(3, "imap_cmd_step: shrank buffer to %u bytes\n", idata->blen);
+    mutt_debug(3, "shrank buffer to %u bytes\n", idata->blen);
   }
 
   idata->lastread = time(NULL);
@@ -1057,7 +1055,7 @@ const char *imap_cmd_trailer(struct ImapData *idata)
 
   if (!s)
   {
-    mutt_debug(2, "imap_cmd_trailer: not a tagged response\n");
+    mutt_debug(2, "not a tagged response\n");
     return notrailer;
   }
 
@@ -1066,7 +1064,7 @@ const char *imap_cmd_trailer(struct ImapData *idata)
              (mutt_str_strncasecmp(s, "NO", 2) != 0) &&
              (mutt_str_strncasecmp(s, "BAD", 3) != 0)))
   {
-    mutt_debug(2, "imap_cmd_trailer: not a command completion: %s\n", idata->buf);
+    mutt_debug(2, "not a command completion: %s\n", idata->buf);
     return notrailer;
   }
 
@@ -1133,7 +1131,7 @@ int imap_exec(struct ImapData *idata, const char *cmdstr, int flags)
     if ((flags & IMAP_CMD_FAIL_OK) && idata->status != IMAP_FATAL)
       return -2;
 
-    mutt_debug(1, "imap_exec: command failed: %s\n", idata->buf);
+    mutt_debug(1, "command failed: %s\n", idata->buf);
     return -1;
   }
 
@@ -1168,7 +1166,7 @@ void imap_cmd_finish(struct ImapData *idata)
         (idata->reopen & IMAP_NEWMAIL_PENDING) && count > idata->max_msn)
     {
       /* read new mail messages */
-      mutt_debug(2, "imap_cmd_finish: Fetching new mail\n");
+      mutt_debug(2, "Fetching new mail\n");
       /* check_status: curs_main uses imap_check_mailbox to detect
        *   whether the index needs updating */
       idata->check_status = IMAP_NEWMAIL_PENDING;
@@ -1176,7 +1174,7 @@ void imap_cmd_finish(struct ImapData *idata)
     }
     else if (idata->reopen & IMAP_EXPUNGE_PENDING)
     {
-      mutt_debug(2, "imap_cmd_finish: Expunging mailbox\n");
+      mutt_debug(2, "Expunging mailbox\n");
       imap_expunge_mailbox(idata);
       /* Detect whether we've gotten unexpected EXPUNGE messages */
       if ((idata->reopen & IMAP_EXPUNGE_PENDING) && !(idata->reopen & IMAP_EXPUNGE_EXPECTED))
@@ -1227,7 +1225,7 @@ int imap_cmd_idle(struct ImapData *idata)
   }
   if (rc != IMAP_CMD_OK)
   {
-    mutt_debug(1, "imap_cmd_idle: error starting IDLE\n");
+    mutt_debug(1, "error starting IDLE\n");
     return -1;
   }
 
