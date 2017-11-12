@@ -1869,7 +1869,7 @@ int mutt_debug_real(const char *function, const char *file, int line, int level,
   static time_t last = 0;
   int ret = 0;
 
-  if (debuglevel < level || !debugfile)
+  if ((debuglevel < level) || !debugfile)
     return 0;
 
   if (now > last)
@@ -1878,6 +1878,13 @@ int mutt_debug_real(const char *function, const char *file, int line, int level,
     last = now;
   }
   ret += fprintf(debugfile, "[%s] ", buf);
+
+  if (debuglevel > 2)
+    ret += fprintf(debugfile, "%s:%d:", file, line);
+
+  if (debuglevel > 1)
+    ret += fprintf(debugfile, "%s() ", function);
+
   va_start(ap, level);
   const char *fmt = va_arg(ap, const char *);
   ret += vfprintf(debugfile, fmt, ap);
