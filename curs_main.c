@@ -31,7 +31,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "lib/lib.h"
+#include "mutt/mutt.h"
+#include "conn/conn.h"
 #include "mutt.h"
 #include "alias.h"
 #include "body.h"
@@ -45,7 +46,6 @@
 #include "mailbox.h"
 #include "mutt_curses.h"
 #include "mutt_menu.h"
-#include "mutt_socket.h"
 #include "mutt_tags.h"
 #include "mx.h"
 #include "ncrypt/ncrypt.h"
@@ -372,7 +372,7 @@ void update_index(struct Menu *menu, struct Context *ctx, int check, int oldcoun
   if (option(OPT_UNCOLLAPSE_NEW) && oldcount && check != MUTT_REOPENED &&
       ((Sort & SORT_MASK) == SORT_THREADS))
   {
-    save_new = safe_malloc(sizeof(struct Header *) * (ctx->msgcount - oldcount));
+    save_new = mutt_mem_malloc(sizeof(struct Header *) * (ctx->msgcount - oldcount));
     for (int i = oldcount; i < ctx->msgcount; i++)
       save_new[i - oldcount] = ctx->hdrs[i];
   }
@@ -460,10 +460,10 @@ static int main_change_folder(struct Menu *menu, int op, char *buf, size_t bufsz
 
 #ifdef USE_COMPRESSED
     if (Context->compress_info && Context->realpath)
-      new_last_folder = safe_strdup(Context->realpath);
+      new_last_folder = mutt_str_strdup(Context->realpath);
     else
 #endif
-      new_last_folder = safe_strdup(Context->path);
+      new_last_folder = mutt_str_strdup(Context->path);
     *oldcount = Context ? Context->msgcount : 0;
 
     check = mx_close_mailbox(Context, index_hint);
@@ -564,7 +564,7 @@ bool mutt_ts_capability(void)
    * necessarily asserting it in terminfo. */
   for (termp = known; termp; termp++)
   {
-    if (term && *termp && (mutt_strncasecmp(term, *termp, strlen(*termp)) != 0))
+    if (term && *termp && (mutt_str_strncasecmp(term, *termp, strlen(*termp)) != 0))
       return true;
   }
 
@@ -655,7 +655,7 @@ void index_make_entry(char *s, size_t l, struct Menu *menu, int num)
     }
   }
 
-  _mutt_make_string(s, l, NONULL(IndexFormat), Context, h, flag);
+  mutt_make_string_flags(s, l, NONULL(IndexFormat), Context, h, flag);
 }
 
 int index_color(int index_no)
@@ -730,7 +730,7 @@ void mutt_draw_statusline(int cols, const char *buf, int buflen)
       if (!found)
       {
         chunks++;
-        safe_realloc(&syntax, chunks * sizeof(struct Syntax));
+        mutt_mem_realloc(&syntax, chunks * sizeof(struct Syntax));
       }
 
       i = chunks - 1;
@@ -1007,7 +1007,8 @@ int mutt_index_menu(void)
               {
                 char cmd[LONG_STRING];
                 menu_status_line(cmd, sizeof(cmd), menu, NONULL(NewMailCommand));
-                mutt_system(cmd);
+                if (mutt_system(cmd) != 0)
+                  mutt_error(_("Error running \"%s\"!"), cmd);
               }
               break;
             }
@@ -1049,7 +1050,8 @@ int mutt_index_menu(void)
           {
             char cmd[LONG_STRING];
             menu_status_line(cmd, sizeof(cmd), menu, NONULL(NewMailCommand));
-            mutt_system(cmd);
+            if (mutt_system(cmd) != 0)
+              mutt_error(_("Error running \"%s\"!"), cmd);
           }
         }
       }
@@ -1249,11 +1251,12 @@ int mutt_index_menu(void)
               mutt_error(_("Article has no parent reference."));
               break;
             }
-            strfcpy(buf, STAILQ_FIRST(&CURHDR->env->references)->data, sizeof(buf));
+            mutt_str_strfcpy(buf, STAILQ_FIRST(&CURHDR->env->references)->data,
+                             sizeof(buf));
           }
           if (!Context->id_hash)
             Context->id_hash = mutt_make_id_hash(Context);
-          hdr = hash_find(Context->id_hash, buf);
+          hdr = mutt_hash_find(Context->id_hash, buf);
           if (hdr)
           {
             if (hdr->virtual != -1)
@@ -1311,7 +1314,7 @@ int mutt_index_menu(void)
           mutt_message(_("Fetching message headers..."));
           if (!Context->id_hash)
             Context->id_hash = mutt_make_id_hash(Context);
-          strfcpy(buf, CURHDR->env->message_id, sizeof(buf));
+          mutt_str_strfcpy(buf, CURHDR->env->message_id, sizeof(buf));
 
           /* trying to find msgid of the root message */
           if (op == OP_RECONSTRUCT_THREAD)
@@ -1319,7 +1322,7 @@ int mutt_index_menu(void)
             struct ListNode *ref;
             STAILQ_FOREACH(ref, &CURHDR->env->references, entries)
             {
-              if (hash_find(Context->id_hash, ref->data) == NULL)
+              if (mutt_hash_find(Context->id_hash, ref->data) == NULL)
               {
                 rc2 = nntp_check_msgid(Context, ref->data);
                 if (rc2 < 0)
@@ -1328,7 +1331,7 @@ int mutt_index_menu(void)
 
               /* the last msgid in References is the root message */
               if (!STAILQ_NEXT(ref, entries))
-                strfcpy(buf, ref->data, sizeof(buf));
+                mutt_str_strfcpy(buf, ref->data, sizeof(buf));
             }
           }
 
@@ -1359,7 +1362,7 @@ int mutt_index_menu(void)
             }
 
             /* if the root message was retrieved, move to it */
-            hdr = hash_find(Context->id_hash, buf);
+            hdr = mutt_hash_find(Context->id_hash, buf);
             if (hdr)
               menu->current = hdr->virtual;
 
@@ -1412,7 +1415,7 @@ int mutt_index_menu(void)
           break;
         }
 
-        if (mutt_atoi(buf, &i) < 0)
+        if (mutt_str_atoi(buf, &i) < 0)
         {
           mutt_error(_("Argument must be a message number."));
           break;
@@ -1519,13 +1522,13 @@ int mutt_index_menu(void)
           }
           else
           {
-            strfcpy(buf2, Context->pattern + 8, sizeof(buf2));
+            mutt_str_strfcpy(buf2, Context->pattern + 8, sizeof(buf2));
             if (!*buf2 || (strncmp(buf2, ".*", 2) == 0))
               snprintf(buf2, sizeof(buf2), "~A");
             unset_option(OPT_HIDE_READ);
           }
           FREE(&Context->pattern);
-          Context->pattern = safe_strdup(buf2);
+          Context->pattern = mutt_str_strdup(buf2);
         }
 
         if (((op == OP_LIMIT_CURRENT_THREAD) && mutt_limit_current_thread(CURHDR)) ||
@@ -2039,7 +2042,7 @@ int mutt_index_menu(void)
         buf[0] = '\0';
         if ((op == OP_MAIN_NEXT_UNREAD_MAILBOX) && Context && Context->path)
         {
-          strfcpy(buf, Context->path, sizeof(buf));
+          mutt_str_strfcpy(buf, Context->path, sizeof(buf));
           mutt_pretty_mailbox(buf, sizeof(buf));
           mutt_buffy(buf, sizeof(buf));
           if (!buf[0])
@@ -2065,7 +2068,7 @@ int mutt_index_menu(void)
         {
           if (Context && (Context->magic == MUTT_NOTMUCH))
           {
-            strfcpy(buf, Context->path, sizeof(buf));
+            mutt_str_strfcpy(buf, Context->path, sizeof(buf));
             mutt_buffy_vfolder(buf, sizeof(buf));
           }
           mutt_enter_vfolder(cp, buf, sizeof(buf), 1);
@@ -2078,6 +2081,11 @@ int mutt_index_menu(void)
 #endif
         else
         {
+          if (option(OPT_CHANGE_FOLDER_NEXT) && Context && Context->path)
+          {
+            mutt_str_strfcpy(buf, Context->path, sizeof(buf));
+            mutt_pretty_mailbox(buf, sizeof(buf));
+          }
 #ifdef USE_NNTP
           if (op == OP_MAIN_CHANGE_GROUP || op == OP_MAIN_CHANGE_GROUP_READONLY)
           {
@@ -2094,7 +2102,7 @@ int mutt_index_menu(void)
           else
 #endif
             /* By default, fill buf with the next mailbox that contains unread
-           * mail */
+             * mail */
             mutt_buffy(buf, sizeof(buf));
 
           if (mutt_enter_fname(cp, buf, sizeof(buf), 1) == -1)
@@ -2871,19 +2879,34 @@ int mutt_index_menu(void)
         mutt_check_rescore(Context);
         break;
 
-      case OP_EDIT_MESSAGE:
+      case OP_EDIT_OR_VIEW_RAW_MESSAGE: /* fall through */
+      case OP_EDIT_RAW_MESSAGE:         /* fall through */
+      case OP_VIEW_RAW_MESSAGE:
 
+        /* TODO split this into 3 cases? */
         CHECK_MSGCOUNT;
         CHECK_VISIBLE;
-        CHECK_READONLY;
         CHECK_ATTACH;
-        /* L10N: CHECK_ACL */
-        CHECK_ACL(MUTT_ACL_INSERT, _("Cannot edit message"));
+        bool edit;
+        if (op == OP_EDIT_RAW_MESSAGE)
+        {
+          CHECK_READONLY;
+          /* L10N: CHECK_ACL */
+          CHECK_ACL(MUTT_ACL_INSERT, _("Cannot edit message"));
+          edit = true;
+        }
+        else if (op == OP_EDIT_OR_VIEW_RAW_MESSAGE)
+          edit = !Context->readonly && mutt_bit_isset(Context->rights, MUTT_ACL_INSERT);
+        else
+          edit = false;
 
         if (option(OPT_PGP_AUTO_DECODE) &&
             (tag || !(CURHDR->security & PGP_TRADITIONAL_CHECKED)))
           mutt_check_traditional_pgp(tag ? NULL : CURHDR, &menu->redraw);
-        mutt_edit_message(Context, tag ? NULL : CURHDR);
+        if (edit)
+          mutt_edit_message(Context, tag ? NULL : CURHDR);
+        else
+          mutt_view_message(Context, tag ? NULL : CURHDR);
         menu->redraw = REDRAW_FULL;
 
         break;
@@ -3129,7 +3152,7 @@ int mutt_index_menu(void)
 
         CHECK_ATTACH;
         if (op != OP_FOLLOWUP || !CURHDR->env->followup_to ||
-            (mutt_strcasecmp(CURHDR->env->followup_to, "poster") != 0) ||
+            (mutt_str_strcasecmp(CURHDR->env->followup_to, "poster") != 0) ||
             query_quadoption(OPT_FOLLOWUP_TO_POSTER,
                              _("Reply by mail as poster prefers?")) != MUTT_YES)
         {

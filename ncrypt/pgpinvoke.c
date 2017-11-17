@@ -30,7 +30,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "lib/lib.h"
+#include "mutt/mutt.h"
 #include "address.h"
 #include "filter.h"
 #include "format_flags.h"
@@ -57,11 +57,10 @@ struct PgpCommandContext
   const char *ids;       /**< %r */
 };
 
-static const char *_mutt_fmt_pgp_command(char *dest, size_t destlen, size_t col,
-                                         int cols, char op, const char *src,
-                                         const char *prefix, const char *ifstring,
-                                         const char *elsestring,
-                                         unsigned long data, enum FormatFlag flags)
+static const char *fmt_pgp_command(char *dest, size_t destlen, size_t col, int cols,
+                                   char op, const char *src, const char *prefix,
+                                   const char *ifstring, const char *elsestring,
+                                   unsigned long data, enum FormatFlag flags)
 {
   char fmt[16];
   struct PgpCommandContext *cctx = (struct PgpCommandContext *) data;
@@ -136,10 +135,9 @@ static const char *_mutt_fmt_pgp_command(char *dest, size_t destlen, size_t col,
   }
 
   if (optional)
-    mutt_expando_format(dest, destlen, col, cols, ifstring, _mutt_fmt_pgp_command, data, 0);
+    mutt_expando_format(dest, destlen, col, cols, ifstring, fmt_pgp_command, data, 0);
   else if (flags & MUTT_FORMAT_OPTIONAL)
-    mutt_expando_format(dest, destlen, col, cols, elsestring,
-                        _mutt_fmt_pgp_command, data, 0);
+    mutt_expando_format(dest, destlen, col, cols, elsestring, fmt_pgp_command, data, 0);
 
   return src;
 }
@@ -148,7 +146,7 @@ static void mutt_pgp_command(char *d, size_t dlen,
                              struct PgpCommandContext *cctx, const char *fmt)
 {
   mutt_expando_format(d, dlen, 0, MuttIndexWindow->cols, NONULL(fmt),
-                      _mutt_fmt_pgp_command, (unsigned long) cctx, 0);
+                      fmt_pgp_command, (unsigned long) cctx, 0);
   mutt_debug(2, "mutt_pgp_command: %s\n", d);
 }
 
@@ -247,12 +245,13 @@ void pgp_invoke_import(const char *fname)
 
   memset(&cctx, 0, sizeof(cctx));
 
-  mutt_quote_filename(_fname, sizeof(_fname), fname);
+  mutt_file_quote_filename(_fname, sizeof(_fname), fname);
   cctx.fname = _fname;
   cctx.signas = PgpSignAs;
 
   mutt_pgp_command(cmd, sizeof(cmd), &cctx, PgpImportCommand);
-  mutt_system(cmd);
+  if (mutt_system(cmd) != 0)
+    mutt_debug(1, "Error running \"%s\"!", cmd);
 }
 
 void pgp_invoke_getkeys(struct Address *addr)
@@ -277,7 +276,7 @@ void pgp_invoke_getkeys(struct Address *addr)
   *tmp = '\0';
   mutt_addrlist_to_local(addr);
   rfc822_write_address_single(tmp, sizeof(tmp), addr, 0);
-  mutt_quote_filename(buff, sizeof(buff), tmp);
+  mutt_file_quote_filename(buff, sizeof(buff), tmp);
 
   addr->personal = personal;
 
@@ -290,7 +289,8 @@ void pgp_invoke_getkeys(struct Address *addr)
   if (!isendwin())
     mutt_message(_("Fetching PGP key..."));
 
-  mutt_system(cmd);
+  if (mutt_system(cmd) != 0)
+    mutt_debug(1, "Error running \"%s\"!", cmd);
 
   if (!isendwin())
     mutt_clear_error();
@@ -326,7 +326,7 @@ pid_t pgp_invoke_list_keys(FILE **pgpin, FILE **pgpout, FILE **pgperr,
   struct ListNode *np;
   STAILQ_FOREACH(np, hints, entries)
   {
-    mutt_quote_filename(quoted, sizeof(quoted), (char *) np->data);
+    mutt_file_quote_filename(quoted, sizeof(quoted), (char *) np->data);
     snprintf(tmpuids, sizeof(tmpuids), "%s %s", uids, quoted);
     strcpy(uids, tmpuids);
   }

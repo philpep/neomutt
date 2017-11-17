@@ -27,7 +27,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "address.h"
-#include "lib/lib.h"
+#include "mutt/mutt.h"
 
 /**
  * enum AddressError - possible values for RFC822Error
@@ -42,7 +42,7 @@ enum AddressError
   ERR_BAD_ADDR_SPEC
 };
 
-void rfc822_dequote_comment(char *s);
+void mutt_str_dequote_comment(char *s);
 void rfc822_free_address(struct Address **p);
 void rfc822_qualify(struct Address *addr, const char *host);
 struct Address *rfc822_parse_adrlist(struct Address *top, const char *s);
@@ -60,9 +60,15 @@ extern const char *const RFC822Errors[];
 
 #define rfc822_error(x) RFC822Errors[x]
 
+/**
+ * rfc822_new_address - Create a new Address
+ * @retval ptr Newly allocated Address
+ *
+ * Free the result with free_address() or rfc822_free_address()
+ */
 static inline struct Address *rfc822_new_address(void)
 {
-  return safe_calloc(1, sizeof(struct Address));
+  return mutt_mem_calloc(1, sizeof(struct Address));
 }
 
 #endif /* _MUTT_RFC822_H */

@@ -40,6 +40,7 @@
 #include "options.h"
 #include "protos.h"
 #include "sort.h"
+#include "conn/conn.h"
 #ifdef USE_LUA
 #include "mutt_lua.h"
 #endif
@@ -403,6 +404,13 @@ struct Option MuttVars[] = {
   **
   */
 #endif
+  { "change_folder_next", DT_BOOL, R_NONE, OPT_CHANGE_FOLDER_NEXT, 0 },
+  /*
+  ** .pp
+  ** When this variable is \fIset\fP, the \fC<change-folder>\fP function
+  ** mailbox suggestion will start at the next folder in your ``$mailboxes''
+  ** list, instead of starting at the first folder in the list.
+  */
   { "charset",          DT_STRING,  R_NONE, UL &Charset, UL 0 },
   /*
   ** .pp
@@ -728,6 +736,17 @@ struct Option MuttVars[] = {
   ** When set, specifies a command used to filter messages.  When a message
   ** is viewed it is passed as standard input to $$display_filter, and the
   ** filtered message is read from the standard output.
+  ** .pp
+  ** When preparing the message, NeoMutt inserts some escape sequences into the
+  ** text.  They are of the form: \fC<esc>]9;XXX<bel>\fP where "XXX" is a random
+  ** 64-bit number.
+  ** .pp
+  ** If these escape sequences interfere with your filter, they can be removed
+  ** using a tool like \fCansifilter\fP or \fCsed 's/^\x1b]9;[0-9]\+\x7//'\fP
+  ** .pp
+  ** If they are removed, then PGP and MIME headers will no longer be coloured.
+  ** This can be fixed by adding this to your config:
+  ** \fCcolor body magenta default '^\[-- .* --\]$$'\fP.
   */
   { "dsn_notify",       DT_STRING,  R_NONE, UL &DsnNotify, UL "" },
   /*
@@ -3829,7 +3848,7 @@ struct Option MuttVars[] = {
   ** .pp
   ** This variable specifies a file containing trusted CA certificates.
   ** Any server certificate that is signed with one of these CA
-  ** certificates is also automatically accepted.
+  ** certificates is also automatically accepted. (GnuTLS only)
   ** .pp
   ** Example:
   ** .ts
@@ -3858,7 +3877,7 @@ struct Option MuttVars[] = {
   ** .pp
   ** This variable specifies the minimum acceptable prime size (in bits)
   ** for use in any Diffie-Hellman key exchange. A value of 0 will use
-  ** the default from the GNUTLS library.
+  ** the default from the GNUTLS library. (GnuTLS only)
   */
 #endif /* USE_SSL_GNUTLS */
   { "ssl_starttls", DT_QUAD, R_NONE, OPT_SSL_STARTTLS, MUTT_YES },
@@ -3875,6 +3894,7 @@ struct Option MuttVars[] = {
   ** This variable specifies whether to attempt to use SSLv2 in the
   ** SSL authentication process. Note that SSLv2 and SSLv3 are now
   ** considered fundamentally insecure and are no longer recommended.
+  ** (OpenSSL only)
   */
 #endif /* defined USE_SSL_OPENSSL */
   { "ssl_use_sslv3", DT_BOOL, R_NONE, OPT_SSL_USE_SSLV3, 0 },
@@ -3908,7 +3928,7 @@ struct Option MuttVars[] = {
   ** .pp
   ** If set to \fIyes\fP, NeoMutt will use CA certificates in the
   ** system-wide certificate store when checking if a server certificate
-  ** is signed by a trusted CA.
+  ** is signed by a trusted CA. (OpenSSL only)
   */
 #endif
   { "ssl_verify_dates", DT_BOOL, R_NONE, OPT_SSL_VERIFY_DATES, 1 },
@@ -3948,7 +3968,7 @@ struct Option MuttVars[] = {
   { "ssl_ciphers", DT_STRING, R_NONE, UL &SslCiphers, UL 0 },
   /*
   ** .pp
-  ** Contains a colon-seperated list of ciphers to use when using SSL.
+  ** Contains a colon-separated list of ciphers to use when using SSL.
   ** For OpenSSL, see ciphers(1) for the syntax of the string.
   ** .pp
   ** For GnuTLS, this option will be used in place of "NORMAL" at the
@@ -3997,6 +4017,7 @@ struct Option MuttVars[] = {
   ** .dt %P  .dd percentage of the way through the index
   ** .dt %r  .dd modified/read-only/won't-write/attach-message indicator,
   **             according to $$status_chars
+  ** .dt %R  .dd number of read messages *
   ** .dt %s  .dd current sorting mode ($$sort)
   ** .dt %S  .dd current aux sorting method ($$sort_aux)
   ** .dt %t  .dd number of tagged messages *

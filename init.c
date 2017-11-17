@@ -37,7 +37,7 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 #include <wchar.h>
-#include "lib/lib.h"
+#include "mutt/mutt.h"
 #include "mutt.h"
 #include "init.h"
 #include "address.h"
@@ -97,14 +97,14 @@ static void myvar_set(const char *var, const char *val)
   struct MyVar **cur = NULL;
 
   for (cur = &MyVars; *cur; cur = &((*cur)->next))
-    if (mutt_strcmp((*cur)->name, var) == 0)
+    if (mutt_str_strcmp((*cur)->name, var) == 0)
       break;
 
   if (!*cur)
-    *cur = safe_calloc(1, sizeof(struct MyVar));
+    *cur = mutt_mem_calloc(1, sizeof(struct MyVar));
 
   if (!(*cur)->name)
-    (*cur)->name = safe_strdup(var);
+    (*cur)->name = mutt_str_strdup(var);
 
   mutt_str_replace(&(*cur)->value, val);
 }
@@ -115,7 +115,7 @@ static void myvar_del(const char *var)
   struct MyVar *tmp = NULL;
 
   for (cur = &MyVars; *cur; cur = &((*cur)->next))
-    if (mutt_strcmp((*cur)->name, var) == 0)
+    if (mutt_str_strcmp((*cur)->name, var) == 0)
       break;
 
   if (*cur)
@@ -150,16 +150,16 @@ static int parse_regex(int idx, struct Buffer *tmp, struct Buffer *err)
   regex_t *rx = NULL;
   struct Regex *ptr = (struct Regex *) MuttVars[idx].data;
 
-  if (!ptr->pattern || (mutt_strcmp(ptr->pattern, tmp->data) != 0))
+  if (!ptr->pattern || (mutt_str_strcmp(ptr->pattern, tmp->data) != 0))
   {
     bool not = false;
 
     /* $mask is case-sensitive */
-    if (mutt_strcmp(MuttVars[idx].option, "mask") != 0)
+    if (mutt_str_strcmp(MuttVars[idx].option, "mask") != 0)
       flags |= mutt_which_case(tmp->data);
 
     p = tmp->data;
-    if (mutt_strcmp(MuttVars[idx].option, "mask") == 0)
+    if (mutt_str_strcmp(MuttVars[idx].option, "mask") == 0)
     {
       if (*p == '!')
       {
@@ -168,7 +168,7 @@ static int parse_regex(int idx, struct Buffer *tmp, struct Buffer *err)
       }
     }
 
-    rx = safe_malloc(sizeof(regex_t));
+    rx = mutt_mem_malloc(sizeof(regex_t));
     e = REGCOMP(rx, p, flags);
     if (e != 0)
     {
@@ -185,7 +185,7 @@ static int parse_regex(int idx, struct Buffer *tmp, struct Buffer *err)
       FREE(&ptr->regex);
     }
 
-    ptr->pattern = safe_strdup(tmp->data);
+    ptr->pattern = mutt_str_strdup(tmp->data);
     ptr->regex = rx;
     ptr->not = not;
 
@@ -239,7 +239,7 @@ int query_quadoption(int opt, const char *prompt)
 int mutt_option_index(const char *s)
 {
   for (int i = 0; MuttVars[i].option; i++)
-    if (mutt_strcmp(s, MuttVars[i].option) == 0)
+    if (mutt_str_strcmp(s, MuttVars[i].option) == 0)
       return (MuttVars[i].type == DT_SYNONYM ?
                   mutt_option_index((char *) MuttVars[i].data) :
                   i);
@@ -267,7 +267,7 @@ bool mutt_option_get(const char *s, struct Option *opt)
     return true;
   }
 
-  if (mutt_strncmp("my_", s, 3) == 0)
+  if (mutt_str_strncmp("my_", s, 3) == 0)
   {
     const char *mv = myvar_get(s);
     if (!mv)
@@ -303,16 +303,16 @@ static struct MbTable *parse_mbtable(const char *s)
   mbstate_t mbstate;
   char *d = NULL;
 
-  t = safe_calloc(1, sizeof(struct MbTable));
-  slen = mutt_strlen(s);
+  t = mutt_mem_calloc(1, sizeof(struct MbTable));
+  slen = mutt_str_strlen(s);
   if (!slen)
     return t;
 
-  t->orig_str = safe_strdup(s);
+  t->orig_str = mutt_str_strdup(s);
   /* This could be more space efficient.  However, being used on tiny
    * strings (ToChars and StatusChars), the overhead is not great. */
-  t->chars = safe_calloc(slen, sizeof(char *));
-  d = t->segmented_str = safe_calloc(slen * 2, sizeof(char));
+  t->chars = mutt_mem_calloc(slen, sizeof(char *));
+  d = t->segmented_str = mutt_mem_calloc(slen * 2, sizeof(char));
 
   memset(&mbstate, 0, sizeof(mbstate));
   while (slen && (k = mbrtowc(NULL, s, slen, &mbstate)))
@@ -340,19 +340,19 @@ static int parse_sort(short *val, const char *s, const struct Mapping *map, stru
 {
   int i, flags = 0;
 
-  if (mutt_strncmp("reverse-", s, 8) == 0)
+  if (mutt_str_strncmp("reverse-", s, 8) == 0)
   {
     s += 8;
     flags = SORT_REVERSE;
   }
 
-  if (mutt_strncmp("last-", s, 5) == 0)
+  if (mutt_str_strncmp("last-", s, 5) == 0)
   {
     s += 5;
     flags |= SORT_LAST;
   }
 
-  i = mutt_getvaluebyname(s, map);
+  i = mutt_map_get_value(s, map);
   if (i == -1)
   {
     snprintf(err->data, err->dsize, _("%s: unknown sorting method"), s);
@@ -388,7 +388,7 @@ int mutt_option_set(const struct Option *val, struct Buffer *err)
         {
           /* $reply_regexp and $alternates require special treatment */
           if (Context && Context->msgcount &&
-              (mutt_strcmp(MuttVars[idx].option, "reply_regexp") == 0))
+              (mutt_str_strcmp(MuttVars[idx].option, "reply_regexp") == 0))
           {
             regmatch_t pmatch[1];
 
@@ -465,12 +465,12 @@ int mutt_option_set(const struct Option *val, struct Buffer *err)
       case DT_PATH:
       {
         char scratch[LONG_STRING];
-        strfcpy(scratch, NONULL((const char *) val->data), sizeof(scratch));
+        mutt_str_strfcpy(scratch, NONULL((const char *) val->data), sizeof(scratch));
         mutt_expand_path(scratch, sizeof(scratch));
         /* MuttVars[idx].data is already 'char**' (or some 'void**') or...
         * so cast to 'void*' is okay */
         FREE((void *) MuttVars[idx].data);
-        *((char **) MuttVars[idx].data) = safe_strdup(scratch);
+        *((char **) MuttVars[idx].data) = mutt_str_strdup(scratch);
         break;
       }
       case DT_STRING:
@@ -478,7 +478,7 @@ int mutt_option_set(const struct Option *val, struct Buffer *err)
         /* MuttVars[idx].data is already 'char**' (or some 'void**') or...
           * so cast to 'void*' is okay */
         FREE((void *) MuttVars[idx].data);
-        *((char **) MuttVars[idx].data) = safe_strdup((char *) val->data);
+        *((char **) MuttVars[idx].data) = mutt_str_strdup((char *) val->data);
       }
       break;
       case DT_BOOL:
@@ -498,7 +498,7 @@ int mutt_option_set(const struct Option *val, struct Buffer *err)
     }
   }
   /* set the string as a myvar if it's one */
-  if (mutt_strncmp("my_", val->option, 3) == 0)
+  if (mutt_str_strncmp("my_", val->option, 3) == 0)
   {
     myvar_set(val->option, (const char *) val->data);
   }
@@ -617,7 +617,7 @@ int mutt_extract_token(struct Buffer *dest, struct Buffer *tok, int flags)
         mutt_debug(1, "mutt_get_token: mismatched backticks\n");
         return -1;
       }
-      cmd = mutt_substrdup(tok->dptr, pc);
+      cmd = mutt_str_substr_dup(tok->dptr, pc);
       pid = mutt_create_filter(cmd, NULL, &fp, NULL);
       if (pid < 0)
       {
@@ -631,8 +631,8 @@ int mutt_extract_token(struct Buffer *dest, struct Buffer *tok, int flags)
 
       /* read line */
       mutt_buffer_init(&expn);
-      expn.data = mutt_read_line(NULL, &expn.dsize, fp, &line, 0);
-      safe_fclose(&fp);
+      expn.data = mutt_file_read_line(NULL, &expn.dsize, fp, &line, 0);
+      mutt_file_fclose(&fp);
       mutt_wait_filter(pid);
 
       /* if we got output, make a new string consisting of the shell output
@@ -646,9 +646,9 @@ int mutt_extract_token(struct Buffer *dest, struct Buffer *tok, int flags)
       }
       else if (expn.data)
       {
-        expnlen = mutt_strlen(expn.data);
-        tok->dsize = expnlen + mutt_strlen(tok->dptr) + 1;
-        ptr = safe_malloc(tok->dsize);
+        expnlen = mutt_str_strlen(expn.data);
+        tok->dsize = expnlen + mutt_str_strlen(tok->dptr) + 1;
+        ptr = mutt_mem_malloc(tok->dsize);
         memcpy(ptr, expn.data, expnlen);
         strcpy(ptr + expnlen, tok->dptr);
         if (tok->destroy)
@@ -672,7 +672,7 @@ int mutt_extract_token(struct Buffer *dest, struct Buffer *tok, int flags)
         tok->dptr++;
         if ((pc = strchr(tok->dptr, '}')))
         {
-          var = mutt_substrdup(tok->dptr, pc);
+          var = mutt_str_substr_dup(tok->dptr, pc);
           tok->dptr = pc + 1;
         }
       }
@@ -680,7 +680,7 @@ int mutt_extract_token(struct Buffer *dest, struct Buffer *tok, int flags)
       {
         for (pc = tok->dptr; isalnum((unsigned char) *pc) || *pc == '_'; pc++)
           ;
-        var = mutt_substrdup(tok->dptr, pc);
+        var = mutt_str_substr_dup(tok->dptr, pc);
         tok->dptr = pc;
       }
       if (var)
@@ -758,17 +758,17 @@ static void add_to_stailq(struct ListHead *head, const char *str)
   struct ListNode *np;
   STAILQ_FOREACH(np, head, entries)
   {
-    if (mutt_strcasecmp(str, np->data) == 0)
+    if (mutt_str_strcasecmp(str, np->data) == 0)
     {
       return;
     }
   }
-  mutt_list_insert_tail(head, safe_strdup(str));
+  mutt_list_insert_tail(head, mutt_str_strdup(str));
 }
 
 static struct RegexList *new_regex_list(void)
 {
-  return safe_calloc(1, sizeof(struct RegexList));
+  return mutt_mem_calloc(1, sizeof(struct RegexList));
 }
 
 int mutt_add_to_regex_list(struct RegexList **list, const char *s, int flags,
@@ -790,7 +790,7 @@ int mutt_add_to_regex_list(struct RegexList **list, const char *s, int flags,
   /* check to make sure the item is not already on this list */
   for (last = *list; last; last = last->next)
   {
-    if (mutt_strcasecmp(rx->pattern, last->regex->pattern) == 0)
+    if (mutt_str_strcasecmp(rx->pattern, last->regex->pattern) == 0)
     {
       /* already on the list, so just ignore it */
       last = NULL;
@@ -827,7 +827,7 @@ static int remove_from_replace_list(struct ReplaceList **list, const char *pat)
   cur = *list;
   if (!cur)
     return 0;
-  if (cur->regex && (mutt_strcmp(cur->regex->pattern, pat) == 0))
+  if (cur->regex && (mutt_str_strcmp(cur->regex->pattern, pat) == 0))
   {
     *list = cur->next;
     mutt_free_regex(&cur->regex);
@@ -839,7 +839,7 @@ static int remove_from_replace_list(struct ReplaceList **list, const char *pat)
   prev = cur;
   for (cur = prev->next; cur;)
   {
-    if (mutt_strcmp(cur->regex->pattern, pat) == 0)
+    if (mutt_str_strcmp(cur->regex->pattern, pat) == 0)
     {
       prev->next = cur->next;
       mutt_free_regex(&cur->regex);
@@ -857,7 +857,7 @@ static int remove_from_replace_list(struct ReplaceList **list, const char *pat)
 
 static struct ReplaceList *new_replace_list(void)
 {
-  return safe_calloc(1, sizeof(struct ReplaceList));
+  return mutt_mem_calloc(1, sizeof(struct ReplaceList));
 }
 
 static int add_to_replace_list(struct ReplaceList **list, const char *pat,
@@ -881,7 +881,7 @@ static int add_to_replace_list(struct ReplaceList **list, const char *pat,
   /* check to make sure the item is not already on this list */
   for (last = *list; last; last = last->next)
   {
-    if (mutt_strcasecmp(rx->pattern, last->regex->pattern) == 0)
+    if (mutt_str_strcasecmp(rx->pattern, last->regex->pattern) == 0)
     {
       /* Already on the list. Formerly we just skipped this case, but
        * now we're supporting removals, which means we're supporting
@@ -914,7 +914,7 @@ static int add_to_replace_list(struct ReplaceList **list, const char *pat,
     mutt_free_regex(&rx);
 
   /* Now t is the ReplaceList* that we want to modify. It is prepared. */
-  t->template = safe_strdup(templ);
+  t->template = mutt_str_strdup(templ);
 
   /* Find highest match number in template string */
   t->nmatch = 0;
@@ -1016,7 +1016,7 @@ static int parse_ifdef(struct Buffer *tmp, struct Buffer *s, unsigned long data,
 
       for (int j = 0; b[j].name; j++)
       {
-        if (mutt_strcmp(tmp->data, b[j].name) == 0)
+        if (mutt_str_strcmp(tmp->data, b[j].name) == 0)
         {
           res = true;
           break;
@@ -1030,12 +1030,18 @@ static int parse_ifdef(struct Buffer *tmp, struct Buffer *s, unsigned long data,
   {
     for (int i = 0; Commands[i].name; i++)
     {
-      if (mutt_strcmp(tmp->data, Commands[i].name) == 0)
+      if (mutt_str_strcmp(tmp->data, Commands[i].name) == 0)
       {
         res = true;
         break;
       }
     }
+  }
+
+  /* or a my_ var? */
+  if (!res)
+  {
+    res = !!myvar_get(tmp->data);
   }
 
   if (!MoreArgs(s))
@@ -1064,14 +1070,14 @@ static int parse_ifdef(struct Buffer *tmp, struct Buffer *s, unsigned long data,
 
 static void remove_from_stailq(struct ListHead *head, const char *str)
 {
-  if (mutt_strcmp("*", str) == 0)
+  if (mutt_str_strcmp("*", str) == 0)
     mutt_list_free(head); /* ``unCMD *'' means delete all current entries */
   else
   {
     struct ListNode *np, *tmp;
     STAILQ_FOREACH_SAFE(np, head, entries, tmp)
     {
-      if (mutt_strcasecmp(str, np->data) == 0)
+      if (mutt_str_strcasecmp(str, np->data) == 0)
       {
         STAILQ_REMOVE(head, np, ListNode, entries);
         FREE(&np->data);
@@ -1133,7 +1139,7 @@ static int parse_unstailq(struct Buffer *buf, struct Buffer *s,
     /*
      * Check for deletion of entire list
      */
-    if (mutt_strcmp(buf->data, "*") == 0)
+    if (mutt_str_strcmp(buf->data, "*") == 0)
     {
       mutt_list_free((struct ListHead *) data);
       break;
@@ -1144,7 +1150,7 @@ static int parse_unstailq(struct Buffer *buf, struct Buffer *s,
   return 0;
 }
 
-static void _alternates_clean(void)
+static void alternates_clean(void)
 {
   if (Context && Context->msgcount)
   {
@@ -1158,7 +1164,7 @@ static int parse_alternates(struct Buffer *buf, struct Buffer *s,
 {
   struct GroupContext *gc = NULL;
 
-  _alternates_clean();
+  alternates_clean();
 
   do
   {
@@ -1187,13 +1193,13 @@ bail:
 static int parse_unalternates(struct Buffer *buf, struct Buffer *s,
                               unsigned long data, struct Buffer *err)
 {
-  _alternates_clean();
+  alternates_clean();
   do
   {
     mutt_extract_token(buf, s, 0);
     mutt_remove_from_regex_list(&Alternates, buf->data);
 
-    if ((mutt_strcmp(buf->data, "*") != 0) &&
+    if ((mutt_str_strcmp(buf->data, "*") != 0) &&
         mutt_add_to_regex_list(&UnAlternates, buf->data, REG_ICASE, err) != 0)
       return -1;
 
@@ -1213,7 +1219,7 @@ static int parse_replace_list(struct Buffer *buf, struct Buffer *s,
   /* First token is a regex. */
   if (!MoreArgs(s))
   {
-    strfcpy(err->data, _("not enough arguments"), err->dsize);
+    mutt_str_strfcpy(err->data, _("not enough arguments"), err->dsize);
     return -1;
   }
   mutt_extract_token(buf, s, 0);
@@ -1221,7 +1227,7 @@ static int parse_replace_list(struct Buffer *buf, struct Buffer *s,
   /* Second token is a replacement template */
   if (!MoreArgs(s))
   {
-    strfcpy(err->data, _("not enough arguments"), err->dsize);
+    mutt_str_strfcpy(err->data, _("not enough arguments"), err->dsize);
     return -1;
   }
   mutt_extract_token(&templ, s, 0);
@@ -1244,14 +1250,14 @@ static int parse_unreplace_list(struct Buffer *buf, struct Buffer *s,
   /* First token is a regex. */
   if (!MoreArgs(s))
   {
-    strfcpy(err->data, _("not enough arguments"), err->dsize);
+    mutt_str_strfcpy(err->data, _("not enough arguments"), err->dsize);
     return -1;
   }
 
   mutt_extract_token(buf, s, 0);
 
   /* "*" is a special case. */
-  if (mutt_strcmp(buf->data, "*") == 0)
+  if (mutt_str_strcmp(buf->data, "*") == 0)
   {
     mutt_free_replace_list(list);
     return 0;
@@ -1303,9 +1309,9 @@ static int parse_spam_list(struct Buffer *buf, struct Buffer *s,
   if (!MoreArgs(s))
   {
     if (data == MUTT_SPAM)
-      strfcpy(err->data, _("spam: no matching pattern"), err->dsize);
+      mutt_str_strfcpy(err->data, _("spam: no matching pattern"), err->dsize);
     else
-      strfcpy(err->data, _("nospam: no matching pattern"), err->dsize);
+      mutt_str_strfcpy(err->data, _("nospam: no matching pattern"), err->dsize);
     return -1;
   }
 
@@ -1344,7 +1350,7 @@ static int parse_spam_list(struct Buffer *buf, struct Buffer *s,
     /* nospam only ever has one parameter. */
 
     /* "*" is a special case. */
-    if (mutt_strcmp(buf->data, "*") == 0)
+    if (mutt_str_strcmp(buf->data, "*") == 0)
     {
       mutt_free_replace_list(&SpamList);
       mutt_free_regex_list(&NoSpamList);
@@ -1363,7 +1369,7 @@ static int parse_spam_list(struct Buffer *buf, struct Buffer *s,
   }
 
   /* This should not happen. */
-  strfcpy(err->data, "This is no good at all.", err->dsize);
+  mutt_str_strfcpy(err->data, "This is no good at all.", err->dsize);
   return -1;
 }
 
@@ -1376,7 +1382,7 @@ static int parse_path_list(struct Buffer *buf, struct Buffer *s,
   do
   {
     mutt_extract_token(buf, s, 0);
-    strfcpy(path, buf->data, sizeof(path));
+    mutt_str_strfcpy(path, buf->data, sizeof(path));
     mutt_expand_path(path, sizeof(path));
     add_to_stailq((struct ListHead *) data, path);
   } while (MoreArgs(s));
@@ -1395,12 +1401,12 @@ static int parse_path_unlist(struct Buffer *buf, struct Buffer *s,
     /*
      * Check for deletion of entire list
      */
-    if (mutt_strcmp(buf->data, "*") == 0)
+    if (mutt_str_strcmp(buf->data, "*") == 0)
     {
       mutt_list_free((struct ListHead *) data);
       break;
     }
-    strfcpy(path, buf->data, sizeof(path));
+    mutt_str_strfcpy(path, buf->data, sizeof(path));
     mutt_expand_path(path, sizeof(path));
     remove_from_stailq((struct ListHead *) data, path);
   } while (MoreArgs(s));
@@ -1462,16 +1468,16 @@ static int parse_group(struct Buffer *buf, struct Buffer *s, unsigned long data,
     if (parse_group_context(&gc, buf, s, data, err) == -1)
       goto bail;
 
-    if (data == MUTT_UNGROUP && (mutt_strcasecmp(buf->data, "*") == 0))
+    if (data == MUTT_UNGROUP && (mutt_str_strcasecmp(buf->data, "*") == 0))
     {
       if (mutt_group_context_clear(&gc) < 0)
         goto bail;
       goto out;
     }
 
-    if (mutt_strcasecmp(buf->data, "-rx") == 0)
+    if (mutt_str_strcasecmp(buf->data, "-rx") == 0)
       state = GS_RX;
-    else if (mutt_strcasecmp(buf->data, "-addr") == 0)
+    else if (mutt_str_strcasecmp(buf->data, "-addr") == 0)
       state = GS_ADDR;
     else
     {
@@ -1523,9 +1529,9 @@ bail:
 }
 
 /**
- * _attachments_clean - always wise to do what someone else did before
+ * attachments_clean - always wise to do what someone else did before
  */
-static void _attachments_clean(void)
+static void attachments_clean(void)
 {
   if (Context && Context->msgcount)
   {
@@ -1550,15 +1556,15 @@ static int parse_attach_list(struct Buffer *buf, struct Buffer *s,
     if (!buf->data || *buf->data == '\0')
       continue;
 
-    a = safe_malloc(sizeof(struct AttachMatch));
+    a = mutt_mem_malloc(sizeof(struct AttachMatch));
 
     /* some cheap hacks that I expect to remove */
-    if (mutt_strcasecmp(buf->data, "any") == 0)
-      a->major = safe_strdup("*/.*");
-    else if (mutt_strcasecmp(buf->data, "none") == 0)
-      a->major = safe_strdup("cheap_hack/this_should_never_match");
+    if (mutt_str_strcasecmp(buf->data, "any") == 0)
+      a->major = mutt_str_strdup("*/.*");
+    else if (mutt_str_strcasecmp(buf->data, "none") == 0)
+      a->major = mutt_str_strdup("cheap_hack/this_should_never_match");
     else
-      a->major = safe_strdup(buf->data);
+      a->major = mutt_str_strdup(buf->data);
 
     if ((p = strchr(a->major, '/')))
     {
@@ -1572,7 +1578,7 @@ static int parse_attach_list(struct Buffer *buf, struct Buffer *s,
     }
 
     len = strlen(a->minor);
-    tmpminor = safe_malloc(len + 3);
+    tmpminor = mutt_mem_malloc(len + 3);
     strcpy(&tmpminor[1], a->minor);
     tmpminor[0] = '^';
     tmpminor[len + 1] = '$';
@@ -1583,7 +1589,7 @@ static int parse_attach_list(struct Buffer *buf, struct Buffer *s,
 
     FREE(&tmpminor);
 
-    if (ret)
+    if (ret != 0)
     {
       regerror(ret, &a->minor_regex, err->data, err->dsize);
       FREE(&a->major);
@@ -1596,7 +1602,7 @@ static int parse_attach_list(struct Buffer *buf, struct Buffer *s,
     mutt_list_insert_tail(head, (char *) a);
   } while (MoreArgs(s));
 
-  _attachments_clean();
+  attachments_clean();
   return 0;
 }
 
@@ -1613,12 +1619,12 @@ static int parse_unattach_list(struct Buffer *buf, struct Buffer *s,
     mutt_extract_token(buf, s, 0);
     FREE(&tmp);
 
-    if (mutt_strcasecmp(buf->data, "any") == 0)
-      tmp = safe_strdup("*/.*");
-    else if (mutt_strcasecmp(buf->data, "none") == 0)
-      tmp = safe_strdup("cheap_hack/this_should_never_match");
+    if (mutt_str_strcasecmp(buf->data, "any") == 0)
+      tmp = mutt_str_strdup("*/.*");
+    else if (mutt_str_strcasecmp(buf->data, "none") == 0)
+      tmp = mutt_str_strdup("cheap_hack/this_should_never_match");
     else
-      tmp = safe_strdup(buf->data);
+      tmp = mutt_str_strdup(buf->data);
 
     if ((minor = strchr(tmp, '/')))
     {
@@ -1637,7 +1643,7 @@ static int parse_unattach_list(struct Buffer *buf, struct Buffer *s,
       a = (struct AttachMatch *) np->data;
       mutt_debug(5, "parse_unattach_list: check %s/%s [%d] : %s/%s [%d]\n",
                  a->major, a->minor, a->major_int, tmp, minor, major);
-      if (a->major_int == major && (mutt_strcasecmp(minor, a->minor) == 0))
+      if (a->major_int == major && (mutt_str_strcasecmp(minor, a->minor) == 0))
       {
         mutt_debug(5, "parse_unattach_list: removed %s/%s [%d]\n", a->major,
                    a->minor, a->major_int);
@@ -1652,7 +1658,7 @@ static int parse_unattach_list(struct Buffer *buf, struct Buffer *s,
   } while (MoreArgs(s));
 
   FREE(&tmp);
-  _attachments_clean();
+  attachments_clean();
   return 0;
 }
 
@@ -1678,7 +1684,7 @@ static int parse_attachments(struct Buffer *buf, struct Buffer *s,
   mutt_extract_token(buf, s, 0);
   if (!buf->data || *buf->data == '\0')
   {
-    strfcpy(err->data, _("attachments: no disposition"), err->dsize);
+    mutt_str_strfcpy(err->data, _("attachments: no disposition"), err->dsize);
     return -1;
   }
 
@@ -1703,14 +1709,14 @@ static int parse_attachments(struct Buffer *buf, struct Buffer *s,
     op = '+';
     category--;
   }
-  if (mutt_strncasecmp(category, "attachment", strlen(category)) == 0)
+  if (mutt_str_strncasecmp(category, "attachment", strlen(category)) == 0)
   {
     if (op == '+')
       head = &AttachAllow;
     else
       head = &AttachExclude;
   }
-  else if (mutt_strncasecmp(category, "inline", strlen(category)) == 0)
+  else if (mutt_str_strncasecmp(category, "inline", strlen(category)) == 0)
   {
     if (op == '+')
       head = &InlineAllow;
@@ -1719,7 +1725,7 @@ static int parse_attachments(struct Buffer *buf, struct Buffer *s,
   }
   else
   {
-    strfcpy(err->data, _("attachments: invalid disposition"), err->dsize);
+    mutt_str_strfcpy(err->data, _("attachments: invalid disposition"), err->dsize);
     return -1;
   }
 
@@ -1735,7 +1741,7 @@ static int parse_unattachments(struct Buffer *buf, struct Buffer *s,
   mutt_extract_token(buf, s, 0);
   if (!buf->data || *buf->data == '\0')
   {
-    strfcpy(err->data, _("unattachments: no disposition"), err->dsize);
+    mutt_str_strfcpy(err->data, _("unattachments: no disposition"), err->dsize);
     return -1;
   }
 
@@ -1746,14 +1752,14 @@ static int parse_unattachments(struct Buffer *buf, struct Buffer *s,
     op = '+';
     p--;
   }
-  if (mutt_strncasecmp(p, "attachment", strlen(p)) == 0)
+  if (mutt_str_strncasecmp(p, "attachment", strlen(p)) == 0)
   {
     if (op == '+')
       head = &AttachAllow;
     else
       head = &AttachExclude;
   }
-  else if (mutt_strncasecmp(p, "inline", strlen(p)) == 0)
+  else if (mutt_str_strncasecmp(p, "inline", strlen(p)) == 0)
   {
     if (op == '+')
       head = &InlineAllow;
@@ -1762,7 +1768,7 @@ static int parse_unattachments(struct Buffer *buf, struct Buffer *s,
   }
   else
   {
-    strfcpy(err->data, _("unattachments: invalid disposition"), err->dsize);
+    mutt_str_strfcpy(err->data, _("unattachments: invalid disposition"), err->dsize);
     return -1;
   }
 
@@ -1778,7 +1784,7 @@ static int parse_unlists(struct Buffer *buf, struct Buffer *s,
     mutt_remove_from_regex_list(&SubscribedLists, buf->data);
     mutt_remove_from_regex_list(&MailLists, buf->data);
 
-    if ((mutt_strcmp(buf->data, "*") != 0) &&
+    if ((mutt_str_strcmp(buf->data, "*") != 0) &&
         mutt_add_to_regex_list(&UnMailLists, buf->data, REG_ICASE, err) != 0)
       return -1;
   } while (MoreArgs(s));
@@ -1825,7 +1831,7 @@ static int parse_unsubscribe(struct Buffer *buf, struct Buffer *s,
     mutt_extract_token(buf, s, 0);
     mutt_remove_from_regex_list(&SubscribedLists, buf->data);
 
-    if ((mutt_strcmp(buf->data, "*") != 0) &&
+    if ((mutt_str_strcmp(buf->data, "*") != 0) &&
         mutt_add_to_regex_list(&UnSubscribedLists, buf->data, REG_ICASE, err) != 0)
       return -1;
   } while (MoreArgs(s));
@@ -1842,7 +1848,7 @@ static int parse_unalias(struct Buffer *buf, struct Buffer *s,
   {
     mutt_extract_token(buf, s, 0);
 
-    if (mutt_strcmp("*", buf->data) == 0)
+    if (mutt_str_strcmp("*", buf->data) == 0)
     {
       if (CurrentMenu == MENU_ALIAS)
       {
@@ -1857,7 +1863,7 @@ static int parse_unalias(struct Buffer *buf, struct Buffer *s,
     else
       for (tmp = Aliases; tmp; tmp = tmp->next)
       {
-        if (mutt_strcasecmp(buf->data, tmp->name) == 0)
+        if (mutt_str_strcasecmp(buf->data, tmp->name) == 0)
         {
           if (CurrentMenu == MENU_ALIAS)
           {
@@ -1890,7 +1896,7 @@ static int parse_alias(struct Buffer *buf, struct Buffer *s, unsigned long data,
 
   if (!MoreArgs(s))
   {
-    strfcpy(err->data, _("alias: no address"), err->dsize);
+    mutt_str_strfcpy(err->data, _("alias: no address"), err->dsize);
     return -1;
   }
 
@@ -1902,7 +1908,7 @@ static int parse_alias(struct Buffer *buf, struct Buffer *s, unsigned long data,
   /* check to see if an alias with this name already exists */
   for (; tmp; tmp = tmp->next)
   {
-    if (mutt_strcasecmp(tmp->name, buf->data) == 0)
+    if (mutt_str_strcasecmp(tmp->name, buf->data) == 0)
       break;
     last = tmp;
   }
@@ -1910,9 +1916,8 @@ static int parse_alias(struct Buffer *buf, struct Buffer *s, unsigned long data,
   if (!tmp)
   {
     /* create a new alias */
-    tmp = safe_calloc(1, sizeof(struct Alias));
-    tmp->self = tmp;
-    tmp->name = safe_strdup(buf->data);
+    tmp = mutt_mem_calloc(1, sizeof(struct Alias));
+    tmp->name = mutt_str_strdup(buf->data);
     /* give the main addressbook code a chance */
     if (CurrentMenu == MENU_ALIAS)
       set_option(OPT_MENU_CALLER);
@@ -1976,19 +1981,19 @@ static int parse_unmy_hdr(struct Buffer *buf, struct Buffer *s,
   do
   {
     mutt_extract_token(buf, s, 0);
-    if (mutt_strcmp("*", buf->data) == 0)
+    if (mutt_str_strcmp("*", buf->data) == 0)
     {
       mutt_list_free(&UserHeader);
       continue;
     }
 
-    l = mutt_strlen(buf->data);
+    l = mutt_str_strlen(buf->data);
     if (buf->data[l - 1] == ':')
       l--;
 
     STAILQ_FOREACH_SAFE(np, &UserHeader, entries, tmp)
     {
-      if ((mutt_strncasecmp(buf->data, np->data, l) == 0) && np->data[l] == ':')
+      if ((mutt_str_strncasecmp(buf->data, np->data, l) == 0) && np->data[l] == ':')
       {
         STAILQ_REMOVE(&UserHeader, np, ListNode, entries);
         FREE(&np->data);
@@ -2009,7 +2014,7 @@ static int parse_my_hdr(struct Buffer *buf, struct Buffer *s,
   mutt_extract_token(buf, s, MUTT_TOKEN_SPACE | MUTT_TOKEN_QUOTE);
   if ((p = strpbrk(buf->data, ": \t")) == NULL || *p != ':')
   {
-    strfcpy(err->data, _("invalid header field"), err->dsize);
+    mutt_str_strfcpy(err->data, _("invalid header field"), err->dsize);
     return -1;
   }
   keylen = p - buf->data + 1;
@@ -2017,7 +2022,7 @@ static int parse_my_hdr(struct Buffer *buf, struct Buffer *s,
   STAILQ_FOREACH(n, &UserHeader, entries)
   {
     /* see if there is already a field by this name */
-    if (mutt_strncasecmp(buf->data, n->data, keylen) == 0)
+    if (mutt_str_strncasecmp(buf->data, n->data, keylen) == 0)
     {
       break;
     }
@@ -2046,12 +2051,12 @@ static void set_default(struct Option *p)
   {
     case DT_STRING:
       if (!p->init && *((char **) p->data))
-        p->init = (unsigned long) safe_strdup(*((char **) p->data));
+        p->init = (unsigned long) mutt_str_strdup(*((char **) p->data));
       break;
     case DT_PATH:
       if (!p->init && *((char **) p->data))
       {
-        char *cp = safe_strdup(*((char **) p->data));
+        char *cp = mutt_str_strdup(*((char **) p->data));
         /* mutt_pretty_mailbox (cp); */
         p->init = (unsigned long) cp;
       }
@@ -2062,14 +2067,14 @@ static void set_default(struct Option *p)
         char tmp[HUGE_STRING];
         *tmp = '\0';
         rfc822_write_address(tmp, sizeof(tmp), *((struct Address **) p->data), 0);
-        p->init = (unsigned long) safe_strdup(tmp);
+        p->init = (unsigned long) mutt_str_strdup(tmp);
       }
       break;
     case DT_REGEX:
     {
       struct Regex *pp = (struct Regex *) p->data;
       if (!p->init && pp->pattern)
-        p->init = (unsigned long) safe_strdup(pp->pattern);
+        p->init = (unsigned long) mutt_str_strdup(pp->pattern);
       break;
     }
   }
@@ -2090,7 +2095,7 @@ static void restore_default(struct Option *p)
       FREE((char **) p->data);
       char *init = NULL;
 #ifdef DEBUG
-      if (mutt_strcmp(p->option, "debug_file") == 0 && debugfile_cmdline)
+      if (mutt_str_strcmp(p->option, "debug_file") == 0 && debugfile_cmdline)
         init = debugfile_cmdline;
       else
 #endif
@@ -2098,9 +2103,9 @@ static void restore_default(struct Option *p)
       if (init)
       {
         char path[_POSIX_PATH_MAX];
-        strfcpy(path, init, sizeof(path));
+        mutt_str_strfcpy(path, init, sizeof(path));
         mutt_expand_path(path, sizeof(path));
-        *((char **) p->data) = safe_strdup(path);
+        *((char **) p->data) = mutt_str_strdup(path);
       }
       break;
     case DT_ADDRESS:
@@ -2121,7 +2126,7 @@ static void restore_default(struct Option *p)
     case DT_SORT:
     case DT_MAGIC:
 #ifdef DEBUG
-      if (mutt_strcmp(p->option, "debug_level") == 0 && debuglevel_cmdline)
+      if (mutt_str_strcmp(p->option, "debug_level") == 0 && debuglevel_cmdline)
         *((short *) p->data) = debuglevel_cmdline;
       else
 #endif
@@ -2144,11 +2149,11 @@ static void restore_default(struct Option *p)
         int retval;
         char *s = (char *) p->init;
 
-        pp->regex = safe_calloc(1, sizeof(regex_t));
-        pp->pattern = safe_strdup((char *) p->init);
-        if (mutt_strcmp(p->option, "mask") != 0)
+        pp->regex = mutt_mem_calloc(1, sizeof(regex_t));
+        pp->pattern = mutt_str_strdup((char *) p->init);
+        if (mutt_str_strcmp(p->option, "mask") != 0)
           flags |= mutt_which_case((const char *) p->init);
-        if ((mutt_strcmp(p->option, "mask") == 0) && *s == '!')
+        if ((mutt_str_strcmp(p->option, "mask") == 0) && *s == '!')
         {
           s++;
           pp->not = true;
@@ -2242,9 +2247,9 @@ static void pretty_var(char *dst, size_t len, const char *option, const char *va
   if (!len)
     return;
 
-  strfcpy(dst, option, len);
+  mutt_str_strfcpy(dst, option, len);
   len--; /* save room for \0 */
-  p = dst + mutt_strlen(dst);
+  p = dst + mutt_str_strlen(dst);
 
   if (p - dst < len)
     *p++ = '=';
@@ -2258,7 +2263,7 @@ static void pretty_var(char *dst, size_t len, const char *option, const char *va
 
 static int check_charset(struct Option *opt, const char *val)
 {
-  char *q = NULL, *s = safe_strdup(val);
+  char *q = NULL, *s = mutt_str_strdup(val);
   int rc = 0;
   bool strict = (strcmp(opt->option, "send_charset") == 0);
 
@@ -2282,8 +2287,8 @@ static int check_charset(struct Option *opt, const char *val)
 
 static bool valid_show_multipart_alternative(const char *val)
 {
-  return ((mutt_strcmp(val, "inline") == 0) ||
-          (mutt_strcmp(val, "info") == 0) || !val || (*val == 0));
+  return ((mutt_str_strcmp(val, "inline") == 0) ||
+          (mutt_str_strcmp(val, "info") == 0) || !val || (*val == 0));
 }
 
 char **mutt_envlist(void)
@@ -2315,7 +2320,7 @@ static void start_debug(void)
     rename(debugfilename, buf);
   }
 
-  debugfile = safe_fopen(debugfilename, "w");
+  debugfile = mutt_file_fopen(debugfilename, "w");
   if (debugfile)
   {
     setbuf(debugfile, NULL); /* don't buffer the debugging output! */
@@ -2335,13 +2340,13 @@ static void restart_debug(void)
   bool disable_debug = (debuglevel > 0 && DebugLevel == 0);
   bool enable_debug = (debuglevel == 0 && DebugLevel > 0);
   bool file_changed =
-      ((mutt_strlen(debugfilename) - 1) != mutt_strlen(DebugFile) ||
-       mutt_strncmp(debugfilename, DebugFile, mutt_strlen(debugfilename) - 1));
+      ((mutt_str_strlen(debugfilename) - 1) != mutt_str_strlen(DebugFile) ||
+       mutt_str_strncmp(debugfilename, DebugFile, mutt_str_strlen(debugfilename) - 1));
 
   if (disable_debug || file_changed)
   {
     mutt_debug(1, "NeoMutt/%s stop debugging\n", PACKAGE_VERSION);
-    safe_fclose(&debugfile);
+    mutt_file_fclose(&debugfile);
   }
 
   if (!enable_debug && !disable_debug && debuglevel != DebugLevel)
@@ -2368,13 +2373,13 @@ void mutt_envlist_set(const char *name, const char *value, bool overwrite)
   char work[LONG_STRING];
   int count, len;
 
-  len = mutt_strlen(name);
+  len = mutt_str_strlen(name);
 
   /* Look for current slot to overwrite */
   count = 0;
   while (envp && *envp)
   {
-    if ((mutt_strncmp(name, *envp, len) == 0) && (*envp)[len] == '=')
+    if ((mutt_str_strncmp(name, *envp, len) == 0) && (*envp)[len] == '=')
     {
       if (!overwrite)
         return;
@@ -2394,8 +2399,8 @@ void mutt_envlist_set(const char *name, const char *value, bool overwrite)
   /* If not found, add new slot */
   else
   {
-    safe_realloc(&envlist, sizeof(char *) * (count + 2));
-    envlist[count] = safe_strdup(work);
+    mutt_mem_realloc(&envlist, sizeof(char *) * (count + 2));
+    envlist[count] = mutt_str_strdup(work);
     envlist[count + 1] = NULL;
   }
 }
@@ -2412,7 +2417,7 @@ static int parse_setenv(struct Buffer *tmp, struct Buffer *s,
 
   if (!MoreArgs(s))
   {
-    strfcpy(err->data, _("too few arguments"), err->dsize);
+    mutt_str_strfcpy(err->data, _("too few arguments"), err->dsize);
     return -1;
   }
 
@@ -2431,7 +2436,7 @@ static int parse_setenv(struct Buffer *tmp, struct Buffer *s,
     int found = 0;
     while (envp && *envp)
     {
-      if (mutt_strncmp(tmp->data, *envp, len) == 0)
+      if (mutt_str_strncmp(tmp->data, *envp, len) == 0)
       {
         if (!found)
         {
@@ -2458,7 +2463,7 @@ static int parse_setenv(struct Buffer *tmp, struct Buffer *s,
     count = 0;
     while (envp && *envp)
     {
-      if ((mutt_strncmp(tmp->data, *envp, len) == 0) && (*envp)[len] == '=')
+      if ((mutt_str_strncmp(tmp->data, *envp, len) == 0) && (*envp)[len] == '=')
       {
         /* shuffle down */
         save = envp++;
@@ -2468,7 +2473,7 @@ static int parse_setenv(struct Buffer *tmp, struct Buffer *s,
           count++;
         }
         *save = NULL;
-        safe_realloc(&envlist, sizeof(char *) * (count + 1));
+        mutt_mem_realloc(&envlist, sizeof(char *) * (count + 1));
         return 0;
       }
       envp++;
@@ -2487,11 +2492,11 @@ static int parse_setenv(struct Buffer *tmp, struct Buffer *s,
 
   if (!MoreArgs(s))
   {
-    strfcpy(err->data, _("too few arguments"), err->dsize);
+    mutt_str_strfcpy(err->data, _("too few arguments"), err->dsize);
     return -1;
   }
 
-  name = safe_strdup(tmp->data);
+  name = mutt_str_strdup(tmp->data);
   mutt_extract_token(tmp, s, 0);
   mutt_envlist_set(name, tmp->data, true);
   FREE(&name);
@@ -2522,12 +2527,12 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
       query = 1;
       s->dptr++;
     }
-    else if (mutt_strncmp("no", s->dptr, 2) == 0)
+    else if (mutt_str_strncmp("no", s->dptr, 2) == 0)
     {
       s->dptr += 2;
       unset = !unset;
     }
-    else if (mutt_strncmp("inv", s->dptr, 3) == 0)
+    else if (mutt_str_strncmp("inv", s->dptr, 3) == 0)
     {
       s->dptr += 3;
       inv = !inv;
@@ -2541,10 +2546,10 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
     /* get the variable name */
     mutt_extract_token(tmp, s, MUTT_TOKEN_EQUAL);
 
-    if (mutt_strncmp("my_", tmp->data, 3) == 0)
+    if (mutt_str_strncmp("my_", tmp->data, 3) == 0)
       myvar = tmp->data;
     else if ((idx = mutt_option_index(tmp->data)) == -1 &&
-             !(reset && (mutt_strcmp("all", tmp->data) == 0)))
+             !(reset && (mutt_str_strcmp("all", tmp->data) == 0)))
     {
       snprintf(err->data, err->dsize, _("%s: unknown variable"), tmp->data);
       return -1;
@@ -2566,7 +2571,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
         return -1;
       }
 
-      if (mutt_strcmp("all", tmp->data) == 0)
+      if (mutt_str_strcmp("all", tmp->data) == 0)
       {
         if (CurrentMenu == MENU_PAGER)
         {
@@ -2605,9 +2610,9 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
 
         s->dptr++;
         mutt_extract_token(tmp, s, 0);
-        if (mutt_strcasecmp("yes", tmp->data) == 0)
+        if (mutt_str_strcasecmp("yes", tmp->data) == 0)
           unset = inv = 0;
-        else if (mutt_strcasecmp("no", tmp->data) == 0)
+        else if (mutt_str_strcasecmp("no", tmp->data) == 0)
           unset = 1;
         else
         {
@@ -2679,7 +2684,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
         else if (DTYPE(MuttVars[idx].type) == DT_PATH)
         {
           _tmp[0] = '\0';
-          strfcpy(_tmp, NONULL(*((char **) MuttVars[idx].data)), sizeof(_tmp));
+          mutt_str_strfcpy(_tmp, NONULL(*((char **) MuttVars[idx].data)), sizeof(_tmp));
           mutt_pretty_mailbox(_tmp, sizeof(_tmp));
           val = _tmp;
         }
@@ -2703,7 +2708,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
         if (myvar)
         {
           /* myvar is a pointer to tmp and will be lost on extract_token */
-          myvar = safe_strdup(myvar);
+          myvar = mutt_str_strdup(myvar);
           myvar_del(myvar);
         }
 
@@ -2718,7 +2723,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
         else if (DTYPE(MuttVars[idx].type) == DT_PATH)
         {
 #ifdef DEBUG
-          if (mutt_strcmp(MuttVars[idx].option, "debug_file") == 0 && debugfile_cmdline)
+          if (mutt_str_strcmp(MuttVars[idx].option, "debug_file") == 0 && debugfile_cmdline)
           {
             mutt_message(_("set debug_file ignored, it have been overridden "
                            "with cmdline"));
@@ -2729,11 +2734,11 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
            * so cast to 'void*' is okay */
           FREE((void *) MuttVars[idx].data);
 
-          strfcpy(scratch, tmp->data, sizeof(scratch));
+          mutt_str_strfcpy(scratch, tmp->data, sizeof(scratch));
           mutt_expand_path(scratch, sizeof(scratch));
-          *((char **) MuttVars[idx].data) = safe_strdup(scratch);
+          *((char **) MuttVars[idx].data) = mutt_str_strdup(scratch);
 #ifdef DEBUG
-          if (mutt_strcmp(MuttVars[idx].option, "debug_file") == 0)
+          if (mutt_str_strcmp(MuttVars[idx].option, "debug_file") == 0)
             restart_debug();
 #endif
         }
@@ -2751,12 +2756,12 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
           }
 
           FREE((void *) MuttVars[idx].data);
-          *((char **) MuttVars[idx].data) = safe_strdup(tmp->data);
-          if (mutt_strcmp(MuttVars[idx].option, "charset") == 0)
+          *((char **) MuttVars[idx].data) = mutt_str_strdup(tmp->data);
+          if (mutt_str_strcmp(MuttVars[idx].option, "charset") == 0)
             mutt_set_charset(Charset);
 
-          if ((mutt_strcmp(MuttVars[idx].option,
-                           "show_multipart_alternative") == 0) &&
+          if ((mutt_str_strcmp(MuttVars[idx].option,
+                               "show_multipart_alternative") == 0) &&
               !valid_show_multipart_alternative(tmp->data))
           {
             snprintf(err->data, err->dsize,
@@ -2789,7 +2794,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
       }
 
       if (option(OPT_ATTACH_MSG) &&
-          (mutt_strcmp(MuttVars[idx].option, "reply_regexp") == 0))
+          (mutt_str_strcmp(MuttVars[idx].option, "reply_regexp") == 0))
       {
         snprintf(err->data, err->dsize,
                  "Operation not permitted when in attach-message mode.");
@@ -2806,7 +2811,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
       if (parse_regex(idx, tmp, err))
         /* $reply_regexp and $alternates require special treatment */
         if (Context && Context->msgcount &&
-            (mutt_strcmp(MuttVars[idx].option, "reply_regexp") == 0))
+            (mutt_str_strcmp(MuttVars[idx].option, "reply_regexp") == 0))
         {
           regmatch_t pmatch[1];
 
@@ -2870,7 +2875,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
       {
         val = *ptr;
         /* compatibility alias */
-        if (mutt_strcmp(MuttVars[idx].option, "wrapmargin") == 0)
+        if (mutt_str_strcmp(MuttVars[idx].option, "wrapmargin") == 0)
           val = *ptr < 0 ? -*ptr : 0;
 
         /* user requested the value of this variable */
@@ -2882,7 +2887,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
       s->dptr++;
 
       mutt_extract_token(tmp, s, 0);
-      rc = mutt_atos(tmp->data, (short *) &val);
+      rc = mutt_str_atos(tmp->data, (short *) &val);
 
       if (rc < 0 || !*tmp->data)
       {
@@ -2892,7 +2897,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
         break;
       }
 #ifdef DEBUG
-      else if (mutt_strcmp(MuttVars[idx].option, "debug_level") == 0 && debuglevel_cmdline)
+      else if (mutt_str_strcmp(MuttVars[idx].option, "debug_level") == 0 && debuglevel_cmdline)
       {
         mutt_message(
             _("set debug_level ignored, it have been overridden with cmdline"));
@@ -2903,26 +2908,26 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
         *ptr = val;
 
       /* these ones need a sanity check */
-      if (mutt_strcmp(MuttVars[idx].option, "history") == 0)
+      if (mutt_str_strcmp(MuttVars[idx].option, "history") == 0)
       {
         if (*ptr < 0)
           *ptr = 0;
         mutt_init_history();
       }
 #ifdef DEBUG
-      else if (mutt_strcmp(MuttVars[idx].option, "debug_level") == 0)
+      else if (mutt_str_strcmp(MuttVars[idx].option, "debug_level") == 0)
       {
         if (*ptr < 0)
           *ptr = 0;
         restart_debug();
       }
 #endif
-      else if (mutt_strcmp(MuttVars[idx].option, "pager_index_lines") == 0)
+      else if (mutt_str_strcmp(MuttVars[idx].option, "pager_index_lines") == 0)
       {
         if (*ptr < 0)
           *ptr = 0;
       }
-      else if (mutt_strcmp(MuttVars[idx].option, "wrapmargin") == 0)
+      else if (mutt_str_strcmp(MuttVars[idx].option, "wrapmargin") == 0)
       {
         if (*ptr < 0)
           *ptr = 0;
@@ -2930,7 +2935,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
           *ptr = -*ptr;
       }
 #ifdef USE_IMAP
-      else if (mutt_strcmp(MuttVars[idx].option, "imap_pipeline_depth") == 0)
+      else if (mutt_str_strcmp(MuttVars[idx].option, "imap_pipeline_depth") == 0)
       {
         if (*ptr < 0)
           *ptr = 0;
@@ -2953,13 +2958,13 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
       {
         s->dptr++;
         mutt_extract_token(tmp, s, 0);
-        if (mutt_strcasecmp("yes", tmp->data) == 0)
+        if (mutt_str_strcasecmp("yes", tmp->data) == 0)
           set_quadoption(MuttVars[idx].data, MUTT_YES);
-        else if (mutt_strcasecmp("no", tmp->data) == 0)
+        else if (mutt_str_strcasecmp("no", tmp->data) == 0)
           set_quadoption(MuttVars[idx].data, MUTT_NO);
-        else if (mutt_strcasecmp("ask-yes", tmp->data) == 0)
+        else if (mutt_str_strcasecmp("ask-yes", tmp->data) == 0)
           set_quadoption(MuttVars[idx].data, MUTT_ASKYES);
-        else if (mutt_strcasecmp("ask-no", tmp->data) == 0)
+        else if (mutt_str_strcasecmp("ask-no", tmp->data) == 0)
           set_quadoption(MuttVars[idx].data, MUTT_ASKNO);
         else
         {
@@ -3014,7 +3019,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
 
       if (query || *s->dptr != '=')
       {
-        p = mutt_getnamebyvalue(*((short *) MuttVars[idx].data) & SORT_MASK, map);
+        p = mutt_map_get_name(*((short *) MuttVars[idx].data) & SORT_MASK, map);
 
         snprintf(err->data, err->dsize, "%s=%s%s%s", MuttVars[idx].option,
                  (*((short *) MuttVars[idx].data) & SORT_REVERSE) ? "reverse-" : "",
@@ -3049,7 +3054,7 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
       if (mutt_hcache_is_valid_backend(tmp->data))
       {
         FREE((void *) MuttVars[idx].data);
-        *(char **) (MuttVars[idx].data) = safe_strdup(tmp->data);
+        *(char **) (MuttVars[idx].data) = mutt_str_strdup(tmp->data);
       }
       else
       {
@@ -3102,47 +3107,6 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
  * avoid cyclic sourcing */
 static struct ListHead MuttrcStack = STAILQ_HEAD_INITIALIZER(MuttrcStack);
 
-/**
- * to_absolute_path - Convert relative filepath to an absolute path
- * @param path      Relative path
- * @param reference Absolute path that \a path is relative to
- * @retval true on success
- * @retval false otherwise
- *
- * Use POSIX functions to convert a path to absolute, relatively to another path
- * @note \a path should be at least of PATH_MAX length
- */
-static int to_absolute_path(char *path, const char *reference)
-{
-  const char *dirpath = NULL;
-  char abs_path[PATH_MAX];
-  int path_len;
-
-  /* if path is already absolute, don't do anything */
-  if ((strlen(path) > 1) && (path[0] == '/'))
-  {
-    return true;
-  }
-
-  dirpath = mutt_dirname(reference);
-  strfcpy(abs_path, dirpath, PATH_MAX);
-  safe_strncat(abs_path, sizeof(abs_path), "/", 1); /* append a / at the end of the path */
-
-  path_len = PATH_MAX - strlen(path);
-
-  safe_strncat(abs_path, sizeof(abs_path), path, path_len > 0 ? path_len : 0);
-
-  path = realpath(abs_path, path);
-
-  if (!path)
-  {
-    printf("Error: issue converting path to absolute (%s)", strerror(errno));
-    return false;
-  }
-
-  return true;
-}
-
 #define MAXERRS 128
 
 /**
@@ -3165,9 +3129,9 @@ static int source_rc(const char *rcfile_path, struct Buffer *err)
 
   pid_t pid;
 
-  strfcpy(rcfile, rcfile_path, PATH_MAX);
+  mutt_str_strfcpy(rcfile, rcfile_path, PATH_MAX);
 
-  rcfilelen = mutt_strlen(rcfile);
+  rcfilelen = mutt_str_strlen(rcfile);
   if (rcfilelen == 0)
     return -1;
 
@@ -3176,7 +3140,7 @@ static int source_rc(const char *rcfile_path, struct Buffer *err)
   if (!ispipe)
   {
     struct ListNode *np = STAILQ_FIRST(&MuttrcStack);
-    if (!to_absolute_path(rcfile, np ? NONULL(np->data) : ""))
+    if (!mutt_file_to_absolute_path(rcfile, np ? NONULL(np->data) : ""))
     {
       mutt_error("Error: impossible to build path of '%s'.", rcfile_path);
       return -1;
@@ -3184,14 +3148,14 @@ static int source_rc(const char *rcfile_path, struct Buffer *err)
 
     STAILQ_FOREACH(np, &MuttrcStack, entries)
     {
-      if (mutt_strcmp(np->data, rcfile) == 0)
+      if (mutt_str_strcmp(np->data, rcfile) == 0)
       {
         break;
       }
     }
     if (!np)
     {
-      mutt_list_insert_head(&MuttrcStack, safe_strdup(rcfile));
+      mutt_list_insert_head(&MuttrcStack, mutt_str_strdup(rcfile));
     }
     else
     {
@@ -3210,12 +3174,12 @@ static int source_rc(const char *rcfile_path, struct Buffer *err)
   }
 
   mutt_buffer_init(&token);
-  while ((linebuf = mutt_read_line(linebuf, &buflen, f, &line, MUTT_CONT)) != NULL)
+  while ((linebuf = mutt_file_read_line(linebuf, &buflen, f, &line, MUTT_CONT)) != NULL)
   {
     conv = ConfigCharset && (*ConfigCharset) && Charset;
     if (conv)
     {
-      currentline = safe_strdup(linebuf);
+      currentline = mutt_str_strdup(linebuf);
       if (!currentline)
         continue;
       mutt_convert_string(&currentline, ConfigCharset, Charset, 0);
@@ -3254,7 +3218,7 @@ static int source_rc(const char *rcfile_path, struct Buffer *err)
   }
   FREE(&token.data);
   FREE(&linebuf);
-  safe_fclose(&f);
+  mutt_file_fclose(&f);
   if (pid != -1)
     mutt_wait_filter(pid);
   if (rc)
@@ -3299,7 +3263,7 @@ static int parse_source(struct Buffer *tmp, struct Buffer *token,
       snprintf(err->data, err->dsize, _("source: error at %s"), token->dptr);
       return -1;
     }
-    strfcpy(path, tmp->data, sizeof(path));
+    mutt_str_strfcpy(path, tmp->data, sizeof(path));
     mutt_expand_path(path, sizeof(path));
 
     if (source_rc(path, err) < 0)
@@ -3335,7 +3299,7 @@ int mutt_parse_rc_line(/* const */ char *line, struct Buffer *token, struct Buff
 
   mutt_buffer_init(&expn);
   expn.data = expn.dptr = line;
-  expn.dsize = mutt_strlen(line);
+  expn.dsize = mutt_str_strlen(line);
 
   *err->data = 0;
 
@@ -3352,7 +3316,7 @@ int mutt_parse_rc_line(/* const */ char *line, struct Buffer *token, struct Buff
     mutt_extract_token(token, &expn, 0);
     for (i = 0; Commands[i].name; i++)
     {
-      if (mutt_strcmp(token->data, Commands[i].name) == 0)
+      if (mutt_str_strcmp(token->data, Commands[i].name) == 0)
       {
         r = Commands[i].func(token, &expn, Commands[i].data, err);
         if (r != 0)
@@ -3398,7 +3362,7 @@ static void matches_ensure_morespace(int current)
     extra_space = Matches_listsize - base_space;
     extra_space *= 2;
     space = base_space + extra_space;
-    safe_realloc(&Matches, space * sizeof(char *));
+    mutt_mem_realloc(&Matches, space * sizeof(char *));
     memset(&Matches[current + 1], 0, space - current);
     Matches_listsize = space;
   }
@@ -3423,7 +3387,7 @@ static void candidate(char *dest, char *try, const char *src, int len)
     matches_ensure_morespace(Num_matched);
     Matches[Num_matched++] = src;
     if (dest[0] == 0)
-      strfcpy(dest, src, len);
+      mutt_str_strfcpy(dest, src, len);
     else
     {
       int l;
@@ -3438,7 +3402,7 @@ static void candidate(char *dest, char *try, const char *src, int len)
 const struct Command *mutt_command_get(const char *s)
 {
   for (int i = 0; Commands[i].name; i++)
-    if (mutt_strcmp(s, Commands[i].name) == 0)
+    if (mutt_str_strcmp(s, Commands[i].name) == 0)
       return &Commands[i];
   return NULL;
 }
@@ -3470,7 +3434,7 @@ int mutt_command_complete(char *buffer, size_t len, int pos, int numtabs)
     if (numtabs == 1)
     {
       Num_matched = 0;
-      strfcpy(User_typed, pt, sizeof(User_typed));
+      mutt_str_strfcpy(User_typed, pt, sizeof(User_typed));
       memset(Matches, 0, Matches_listsize);
       memset(Completed, 0, sizeof(Completed));
       for (num = 0; Commands[num].name; num++)
@@ -3498,22 +3462,22 @@ int mutt_command_complete(char *buffer, size_t len, int pos, int numtabs)
     /* return the completed command */
     strncpy(buffer, Completed, len - spaces);
   }
-  else if ((mutt_strncmp(buffer, "set", 3) == 0) ||
-           (mutt_strncmp(buffer, "unset", 5) == 0) ||
-           (mutt_strncmp(buffer, "reset", 5) == 0) ||
-           (mutt_strncmp(buffer, "toggle", 6) == 0))
+  else if ((mutt_str_strncmp(buffer, "set", 3) == 0) ||
+           (mutt_str_strncmp(buffer, "unset", 5) == 0) ||
+           (mutt_str_strncmp(buffer, "reset", 5) == 0) ||
+           (mutt_str_strncmp(buffer, "toggle", 6) == 0))
   { /* complete variables */
     static const char *const prefixes[] = { "no", "inv", "?", "&", 0 };
 
     pt++;
     /* loop through all the possible prefixes (no, inv, ...) */
-    if (mutt_strncmp(buffer, "set", 3) == 0)
+    if (mutt_str_strncmp(buffer, "set", 3) == 0)
     {
       for (num = 0; prefixes[num]; num++)
       {
-        if (mutt_strncmp(pt, prefixes[num], mutt_strlen(prefixes[num])) == 0)
+        if (mutt_str_strncmp(pt, prefixes[num], mutt_str_strlen(prefixes[num])) == 0)
         {
-          pt += mutt_strlen(prefixes[num]);
+          pt += mutt_str_strlen(prefixes[num]);
           break;
         }
       }
@@ -3523,7 +3487,7 @@ int mutt_command_complete(char *buffer, size_t len, int pos, int numtabs)
     if (numtabs == 1)
     {
       Num_matched = 0;
-      strfcpy(User_typed, pt, sizeof(User_typed));
+      mutt_str_strfcpy(User_typed, pt, sizeof(User_typed));
       memset(Matches, 0, Matches_listsize);
       memset(Completed, 0, sizeof(Completed));
       for (num = 0; MuttVars[num].option; num++)
@@ -3552,7 +3516,7 @@ int mutt_command_complete(char *buffer, size_t len, int pos, int numtabs)
 
     strncpy(pt, Completed, buffer + len - pt - spaces);
   }
-  else if (mutt_strncmp(buffer, "exec", 4) == 0)
+  else if (mutt_str_strncmp(buffer, "exec", 4) == 0)
   {
     const struct Binding *menu = km_get_table(CurrentMenu);
 
@@ -3564,7 +3528,7 @@ int mutt_command_complete(char *buffer, size_t len, int pos, int numtabs)
     if (numtabs == 1)
     {
       Num_matched = 0;
-      strfcpy(User_typed, pt, sizeof(User_typed));
+      mutt_str_strfcpy(User_typed, pt, sizeof(User_typed));
       memset(Matches, 0, Matches_listsize);
       memset(Completed, 0, sizeof(Completed));
       for (num = 0; menu[num].name; num++)
@@ -3622,15 +3586,15 @@ int mutt_var_value_complete(char *buffer, size_t len, int pos)
   if (*pt == '=') /* abort if no var before the '=' */
     return 0;
 
-  if (mutt_strncmp(buffer, "set", 3) == 0)
+  if (mutt_str_strncmp(buffer, "set", 3) == 0)
   {
     int idx;
     char val[LONG_STRING];
     const char *myvarval = NULL;
 
-    strfcpy(var, pt, sizeof(var));
+    mutt_str_strfcpy(var, pt, sizeof(var));
     /* ignore the trailing '=' when comparing */
-    int vlen = mutt_strlen(var);
+    int vlen = mutt_str_strlen(var);
     if (vlen == 0)
       return 0;
 
@@ -3666,7 +3630,7 @@ static int complete_all_nm_tags(const char *pt)
   int tag_count_2 = 0;
 
   Num_matched = 0;
-  strfcpy(User_typed, pt, sizeof(User_typed));
+  mutt_str_strfcpy(User_typed, pt, sizeof(User_typed));
   memset(Matches, 0, Matches_listsize);
   memset(Completed, 0, sizeof(Completed));
 
@@ -3684,7 +3648,7 @@ static int complete_all_nm_tags(const char *pt)
     FREE(&nm_tags);
   }
   /* Allocate a new list, with sentinel. */
-  nm_tags = safe_malloc((tag_count_1 + 1) * sizeof(char *));
+  nm_tags = mutt_mem_malloc((tag_count_1 + 1) * sizeof(char *));
   nm_tags[tag_count_1] = NULL;
 
   /* Get all the tags. */
@@ -3723,7 +3687,7 @@ bool mutt_nm_query_complete(char *buffer, size_t len, int pos, int numtabs)
   SKIPWS(buffer);
   spaces = buffer - pt;
 
-  pt = (char *) rstrnstr((char *) buffer, pos, "tag:");
+  pt = (char *) mutt_str_rstrnstr((char *) buffer, pos, "tag:");
   if (pt)
   {
     pt += 4;
@@ -3820,27 +3784,27 @@ int var_to_string(int idx, char *val, size_t len)
   if ((DTYPE(MuttVars[idx].type) == DT_STRING) ||
       (DTYPE(MuttVars[idx].type) == DT_PATH) || (DTYPE(MuttVars[idx].type) == DT_REGEX))
   {
-    strfcpy(tmp, NONULL(*((char **) MuttVars[idx].data)), sizeof(tmp));
+    mutt_str_strfcpy(tmp, NONULL(*((char **) MuttVars[idx].data)), sizeof(tmp));
     if (DTYPE(MuttVars[idx].type) == DT_PATH)
       mutt_pretty_mailbox(tmp, sizeof(tmp));
   }
   else if (DTYPE(MuttVars[idx].type) == DT_MBTABLE)
   {
     struct MbTable *mbt = (*((struct MbTable **) MuttVars[idx].data));
-    strfcpy(tmp, mbt ? NONULL(mbt->orig_str) : "", sizeof(tmp));
+    mutt_str_strfcpy(tmp, mbt ? NONULL(mbt->orig_str) : "", sizeof(tmp));
   }
   else if (DTYPE(MuttVars[idx].type) == DT_ADDRESS)
   {
     rfc822_write_address(tmp, sizeof(tmp), *((struct Address **) MuttVars[idx].data), 0);
   }
   else if (DTYPE(MuttVars[idx].type) == DT_QUAD)
-    strfcpy(tmp, vals[quadoption(MuttVars[idx].data)], sizeof(tmp));
+    mutt_str_strfcpy(tmp, vals[quadoption(MuttVars[idx].data)], sizeof(tmp));
   else if (DTYPE(MuttVars[idx].type) == DT_NUMBER)
   {
     short sval = *((short *) MuttVars[idx].data);
 
     /* avert your eyes, gentle reader */
-    if (mutt_strcmp(MuttVars[idx].option, "wrapmargin") == 0)
+    if (mutt_str_strcmp(MuttVars[idx].option, "wrapmargin") == 0)
       sval = sval > 0 ? 0 : -sval;
 
     snprintf(tmp, sizeof(tmp), "%d", sval);
@@ -3868,7 +3832,7 @@ int var_to_string(int idx, char *val, size_t len)
         map = SortMethods;
         break;
     }
-    p = mutt_getnamebyvalue(*((short *) MuttVars[idx].data) & SORT_MASK, map);
+    p = mutt_map_get_name(*((short *) MuttVars[idx].data) & SORT_MASK, map);
     snprintf(tmp, sizeof(tmp), "%s%s%s",
              (*((short *) MuttVars[idx].data) & SORT_REVERSE) ? "reverse-" : "",
              (*((short *) MuttVars[idx].data) & SORT_LAST) ? "last-" : "", p);
@@ -3894,10 +3858,10 @@ int var_to_string(int idx, char *val, size_t len)
       default:
         p = "unknown";
     }
-    strfcpy(tmp, p, sizeof(tmp));
+    mutt_str_strfcpy(tmp, p, sizeof(tmp));
   }
   else if (DTYPE(MuttVars[idx].type) == DT_BOOL)
-    strfcpy(tmp, option(MuttVars[idx].data) ? "yes" : "no", sizeof(tmp));
+    mutt_str_strfcpy(tmp, option(MuttVars[idx].data) ? "yes" : "no", sizeof(tmp));
   else
     return 0;
 
@@ -3919,7 +3883,7 @@ int mutt_query_variables(struct ListHead *queries)
   mutt_buffer_init(&token);
 
   err.dsize = STRING;
-  err.data = safe_malloc(err.dsize);
+  err.data = mutt_mem_malloc(err.dsize);
 
   struct ListNode *np;
   STAILQ_FOREACH(np, queries, entries)
@@ -3955,7 +3919,7 @@ int mutt_dump_variables(int hide_sensitive)
   mutt_buffer_init(&token);
 
   err.dsize = STRING;
-  err.data = safe_malloc(err.dsize);
+  err.data = mutt_mem_malloc(err.dsize);
 
   for (int i = 0; MuttVars[i].option; i++)
   {
@@ -3991,7 +3955,7 @@ static int execute_commands(struct ListHead *p)
 
   mutt_buffer_init(&err);
   err.dsize = STRING;
-  err.data = safe_malloc(err.dsize);
+  err.data = mutt_mem_malloc(err.dsize);
   mutt_buffer_init(&token);
   struct ListNode *np;
   STAILQ_FOREACH(np, p, entries)
@@ -4038,7 +4002,7 @@ static char *find_cfg(const char *home, const char *xdg_cfg_home)
       snprintf(buffer, sizeof(buffer), "%s/%s%s", locations[i][0],
                locations[i][1], names[j]);
       if (access(buffer, F_OK) == 0)
-        return safe_strdup(buffer);
+        return mutt_str_strdup(buffer);
     }
   }
 
@@ -4082,15 +4046,15 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
 
   mutt_buffer_init(&err);
   err.dsize = STRING;
-  err.data = safe_malloc(err.dsize);
+  err.data = mutt_mem_malloc(err.dsize);
   err.dptr = err.data;
 
-  Groups = hash_create(1031, 0);
+  Groups = mutt_hash_create(1031, 0);
   /* reverse alias keys need to be strdup'ed because of idna conversions */
-  ReverseAliases =
-      hash_create(1031, MUTT_HASH_STRCASECMP | MUTT_HASH_STRDUP_KEYS | MUTT_HASH_ALLOW_DUPS);
-  TagTransforms = hash_create(64, 1);
-  TagFormats = hash_create(64, 0);
+  ReverseAliases = mutt_hash_create(
+      1031, MUTT_HASH_STRCASECMP | MUTT_HASH_STRDUP_KEYS | MUTT_HASH_ALLOW_DUPS);
+  TagTransforms = mutt_hash_create(64, 1);
+  TagFormats = mutt_hash_create(64, 0);
 
   mutt_menu_init();
 
@@ -4100,19 +4064,19 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
   /* on one of the systems I use, getcwd() does not return the same prefix
      as is listed in the passwd file */
   if ((p = getenv("HOME")))
-    HomeDir = safe_strdup(p);
+    HomeDir = mutt_str_strdup(p);
 
   /* Get some information about the user */
   if ((pw = getpwuid(getuid())))
   {
     char rnbuf[STRING];
 
-    Username = safe_strdup(pw->pw_name);
+    Username = mutt_str_strdup(pw->pw_name);
     if (!HomeDir)
-      HomeDir = safe_strdup(pw->pw_dir);
+      HomeDir = mutt_str_strdup(pw->pw_dir);
 
-    RealName = safe_strdup(mutt_gecos_name(rnbuf, sizeof(rnbuf), pw));
-    Shell = safe_strdup(pw->pw_shell);
+    RealName = mutt_str_strdup(mutt_gecos_name(rnbuf, sizeof(rnbuf), pw));
+    Shell = mutt_str_strdup(pw->pw_shell);
     endpwent();
   }
   else
@@ -4124,14 +4088,14 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
       exit(1);
     }
     if ((p = getenv("USER")))
-      Username = safe_strdup(p);
+      Username = mutt_str_strdup(p);
     else
     {
       mutt_endwin(NULL);
       fputs(_("unable to determine username"), stderr);
       exit(1);
     }
-    Shell = safe_strdup((p = getenv("SHELL")) ? p : "/bin/sh");
+    Shell = mutt_str_strdup((p = getenv("SHELL")) ? p : "/bin/sh");
   }
 
 #ifdef DEBUG
@@ -4141,13 +4105,13 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
     debuglevel = debuglevel_cmdline;
     if (debugfile_cmdline)
     {
-      DebugFile = safe_strdup(debugfile_cmdline);
+      DebugFile = mutt_str_strdup(debugfile_cmdline);
     }
     else
     {
       int i = mutt_option_index("debug_file");
       if ((i >= 0) && (MuttVars[i].init != 0))
-        DebugFile = safe_strdup((const char *) MuttVars[i].init);
+        DebugFile = mutt_str_strdup((const char *) MuttVars[i].init);
     }
     start_debug();
   }
@@ -4169,25 +4133,26 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
 
   /* some systems report the FQDN instead of just the hostname */
   if ((p = strchr(utsname.nodename, '.')))
-    ShortHostname = mutt_substrdup(utsname.nodename, p);
+    ShortHostname = mutt_str_substr_dup(utsname.nodename, p);
   else
-    ShortHostname = safe_strdup(utsname.nodename);
+    ShortHostname = mutt_str_strdup(utsname.nodename);
 
   /* now get FQDN.  Use /etc/mailname first, then configured domain, DNS next, then uname */
   if (getmailname(buffer, sizeof(buffer)) != -1)
-    Hostname = safe_strdup(buffer);
+    Hostname = mutt_str_strdup(buffer);
 #ifdef DOMAIN
   /* we have a compile-time domain name, use that for Hostname */
   if (!Hostname)
   {
-    Hostname = safe_malloc(mutt_strlen(DOMAIN) + mutt_strlen(Hostname) + 2);
-    sprintf(Hostname, "%s.%s", NONULL(Hostname), DOMAIN); /* __SPRINTF_CHECKED__ */
+    Hostname = mutt_mem_malloc(mutt_str_strlen(DOMAIN) + mutt_str_strlen(Hostname) + 2);
+    sprintf(Hostname, "%s.%s", NONULL(Hostname), DOMAIN);
   }
   else
 #else
   if (!(getdnsdomainname(buffer, sizeof(buffer))))
   {
-    Hostname = safe_malloc(mutt_strlen(buffer) + mutt_strlen(ShortHostname) + 2);
+    Hostname =
+        mutt_mem_malloc(mutt_str_strlen(buffer) + mutt_str_strlen(ShortHostname) + 2);
     sprintf(Hostname, "%s.%s", NONULL(ShortHostname), buffer);
   }
   else
@@ -4200,61 +4165,47 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
      * user to provide the correct hostname if the nodename won't work in their
      * network.
      */
-    Hostname = safe_strdup(utsname.nodename);
+    Hostname = mutt_str_strdup(utsname.nodename);
 #endif
 
 #ifdef USE_NNTP
   if ((p = getenv("NNTPSERVER")))
   {
     FREE(&NewsServer);
-    NewsServer = safe_strdup(p);
+    NewsServer = mutt_str_strdup(p);
   }
   else
   {
-    FILE *f = NULL;
-    char *c = NULL;
-
-    if ((f = safe_fopen(SYSCONFDIR "/nntpserver", "r")))
-    {
-      if (fgets(buffer, sizeof(buffer), f) == NULL)
-        buffer[0] = '\0';
-      p = buffer;
-      SKIPWS(p);
-      c = p;
-      while (*c && (*c != ' ') && (*c != '\t') && (*c != '\r') && (*c != '\n'))
-        c++;
-      *c = '\0';
-      NewsServer = safe_strdup(p);
-      fclose(f);
-    }
+    p = mutt_file_read_keyword(SYSCONFDIR "/nntpserver", buffer, sizeof(buffer));
+    NewsServer = mutt_str_strdup(p);
   }
 #endif
 
   if ((p = getenv("MAIL")))
-    SpoolFile = safe_strdup(p);
+    SpoolFile = mutt_str_strdup(p);
   else if ((p = getenv("MAILDIR")))
-    SpoolFile = safe_strdup(p);
+    SpoolFile = mutt_str_strdup(p);
   else
   {
 #ifdef HOMESPOOL
-    mutt_concat_path(buffer, NONULL(HomeDir), MAILPATH, sizeof(buffer));
+    mutt_file_concat_path(buffer, NONULL(HomeDir), MAILPATH, sizeof(buffer));
 #else
-    mutt_concat_path(buffer, MAILPATH, NONULL(Username), sizeof(buffer));
+    mutt_file_concat_path(buffer, MAILPATH, NONULL(Username), sizeof(buffer));
 #endif
-    SpoolFile = safe_strdup(buffer);
+    SpoolFile = mutt_str_strdup(buffer);
   }
 
   if ((p = getenv("MAILCAPS")))
-    MailcapPath = safe_strdup(p);
+    MailcapPath = mutt_str_strdup(p);
   else
   {
     /* Default search path from RFC1524 */
-    MailcapPath = safe_strdup(
+    MailcapPath = mutt_str_strdup(
         "~/.mailcap:" PKGDATADIR "/mailcap:" SYSCONFDIR
         "/mailcap:/etc/mailcap:/usr/etc/mailcap:/usr/local/etc/mailcap");
   }
 
-  Tmpdir = safe_strdup((p = getenv("TMPDIR")) ? p : "/tmp");
+  Tmpdir = mutt_str_strdup((p = getenv("TMPDIR")) ? p : "/tmp");
 
   p = getenv("VISUAL");
   if (!p)
@@ -4263,8 +4214,8 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
     if (!p)
       p = "/usr/bin/editor";
   }
-  Editor = safe_strdup(p);
-  Visual = safe_strdup(p);
+  Editor = mutt_str_strdup(p);
+  Visual = mutt_str_strdup(p);
 
   p = getenv("REPLYTO");
   if (p)
@@ -4275,7 +4226,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
 
     mutt_buffer_init(&buf);
     buf.data = buf.dptr = buffer;
-    buf.dsize = mutt_strlen(buffer);
+    buf.dsize = mutt_str_strlen(buffer);
 
     mutt_buffer_init(&token);
     parse_my_hdr(&token, &buf, 0, &err);
@@ -4289,7 +4240,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
   mutt_set_langinfo_charset();
   mutt_set_charset(Charset);
 
-  Matches = safe_calloc(Matches_listsize, sizeof(char *));
+  Matches = mutt_mem_calloc(Matches_listsize, sizeof(char *));
 
   /* Set standard defaults */
   for (int i = 0; MuttVars[i].option; i++)
@@ -4304,7 +4255,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
   /* Do we have a locale definition? */
   if (((p = getenv("LC_ALL")) != NULL && p[0]) || ((p = getenv("LANG")) != NULL && p[0]) ||
       ((p = getenv("LC_CTYPE")) != NULL && p[0]))
-    set_option(OPT_LOCALES);
+    OPT_LOCALES = true;
 #endif
 
 #ifdef HAVE_GETSID
@@ -4351,10 +4302,10 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
     struct ListNode *np;
     STAILQ_FOREACH(np, &Muttrc, entries)
     {
-      strfcpy(buffer, np->data, sizeof(buffer));
+      mutt_str_strfcpy(buffer, np->data, sizeof(buffer));
       FREE(&np->data);
       mutt_expand_path(buffer, sizeof(buffer));
-      np->data = safe_strdup(buffer);
+      np->data = mutt_str_strdup(buffer);
       if (access(np->data, F_OK))
       {
         snprintf(buffer, sizeof(buffer), "%s: %s", np->data, strerror(errno));
@@ -4367,7 +4318,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
   if (!STAILQ_EMPTY(&Muttrc))
   {
     FREE(&AliasFile);
-    AliasFile = safe_strdup(STAILQ_FIRST(&Muttrc)->data);
+    AliasFile = mutt_str_strdup(STAILQ_FIRST(&Muttrc)->data);
   }
 
   /* Process the global rc file if it exists and the user hasn't explicitly
@@ -4430,7 +4381,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
       mutt_exit(1);
   }
 
-  mutt_mkdir(Tmpdir, S_IRWXU);
+  mutt_file_mkdir(Tmpdir, S_IRWXU);
 
   mutt_read_histfile();
 
@@ -4456,7 +4407,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
 int mutt_get_hook_type(const char *name)
 {
   for (const struct Command *c = Commands; c->name; c++)
-    if (c->func == mutt_parse_hook && (mutt_strcasecmp(c->name, name) == 0))
+    if (c->func == mutt_parse_hook && (mutt_str_strcasecmp(c->name, name) == 0))
       return c->data;
   return 0;
 }
@@ -4464,11 +4415,11 @@ int mutt_get_hook_type(const char *name)
 static int parse_group_context(struct GroupContext **ctx, struct Buffer *buf,
                                struct Buffer *s, unsigned long data, struct Buffer *err)
 {
-  while (mutt_strcasecmp(buf->data, "-group") == 0)
+  while (mutt_str_strcasecmp(buf->data, "-group") == 0)
   {
     if (!MoreArgs(s))
     {
-      strfcpy(err->data, _("-group: no group name"), err->dsize);
+      mutt_str_strfcpy(err->data, _("-group: no group name"), err->dsize);
       goto bail;
     }
 
@@ -4478,7 +4429,7 @@ static int parse_group_context(struct GroupContext **ctx, struct Buffer *buf,
 
     if (!MoreArgs(s))
     {
-      strfcpy(err->data, _("out of arguments"), err->dsize);
+      mutt_str_strfcpy(err->data, _("out of arguments"), err->dsize);
       goto bail;
     }
 
@@ -4506,15 +4457,15 @@ static int parse_tag_transforms(struct Buffer *b, struct Buffer *s,
 
     mutt_extract_token(b, s, 0);
     if (b->data && *b->data)
-      tag = safe_strdup(b->data);
+      tag = mutt_str_strdup(b->data);
     else
       continue;
 
     mutt_extract_token(b, s, 0);
-    transform = safe_strdup(b->data);
+    transform = mutt_str_strdup(b->data);
 
     /* avoid duplicates */
-    tmp = hash_find(TagTransforms, tag);
+    tmp = mutt_hash_find(TagTransforms, tag);
     if (tmp)
     {
       mutt_debug(3, "tag transform '%s' already registered as '%s'\n", tag, tmp);
@@ -4523,7 +4474,7 @@ static int parse_tag_transforms(struct Buffer *b, struct Buffer *s,
       continue;
     }
 
-    hash_insert(TagTransforms, tag, transform);
+    mutt_hash_insert(TagTransforms, tag, transform);
   }
   return 0;
 }
@@ -4542,15 +4493,15 @@ static int parse_tag_formats(struct Buffer *b, struct Buffer *s,
 
     mutt_extract_token(b, s, 0);
     if (b->data && *b->data)
-      tag = safe_strdup(b->data);
+      tag = mutt_str_strdup(b->data);
     else
       continue;
 
     mutt_extract_token(b, s, 0);
-    format = safe_strdup(b->data);
+    format = mutt_str_strdup(b->data);
 
     /* avoid duplicates */
-    tmp = hash_find(TagFormats, format);
+    tmp = mutt_hash_find(TagFormats, format);
     if (tmp)
     {
       mutt_debug(3, "tag format '%s' already registered as '%s'\n", format, tmp);
@@ -4559,7 +4510,7 @@ static int parse_tag_formats(struct Buffer *b, struct Buffer *s,
       continue;
     }
 
-    hash_insert(TagFormats, format, tag);
+    mutt_hash_insert(TagFormats, format, tag);
   }
   return 0;
 }
@@ -4681,7 +4632,7 @@ const char *myvar_get(const char *var)
   struct MyVar *cur = NULL;
 
   for (cur = MyVars; cur; cur = cur->next)
-    if (mutt_strcmp(cur->name, var) == 0)
+    if (mutt_str_strcmp(cur->name, var) == 0)
       return NONULL(cur->value);
 
   return NULL;
@@ -4705,14 +4656,14 @@ int mutt_label_complete(char *buffer, size_t len, int numtabs)
     struct HashWalkState state;
 
     Num_matched = 0;
-    strfcpy(User_typed, buffer, sizeof(User_typed));
+    mutt_str_strfcpy(User_typed, buffer, sizeof(User_typed));
     memset(Matches, 0, Matches_listsize);
     memset(Completed, 0, sizeof(Completed));
     memset(&state, 0, sizeof(state));
-    while ((entry = hash_walk(Context->label_hash, &state)))
+    while ((entry = mutt_hash_walk(Context->label_hash, &state)))
       candidate(Completed, User_typed, entry->key.strkey, sizeof(Completed));
     matches_ensure_morespace(Num_matched);
-    qsort(Matches, Num_matched, sizeof(char *), (sort_t *) mutt_strcasecmp);
+    qsort(Matches, Num_matched, sizeof(char *), (sort_t *) mutt_str_strcasecmp);
     Matches[Num_matched++] = User_typed;
 
     /* All matches are stored. Longest non-ambiguous string is ""

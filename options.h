@@ -43,6 +43,7 @@ enum GlobalBool
   OPT_BEEP_NEW,
   OPT_BOUNCE_DELIVERED,
   OPT_BRAILLE_FRIENDLY,
+  OPT_CHANGE_FOLDER_NEXT,
   OPT_CHECK_MBOX_SIZE,
   OPT_CHECK_NEW,
   OPT_COLLAPSE_ALL,
@@ -244,7 +245,6 @@ enum GlobalBool
 
   OPT_AUX_SORT,           /**< (pseudo) using auxiliary sort function */
   OPT_FORCE_REFRESH,      /**< (pseudo) refresh even during macros */
-  OPT_LOCALES,           /**< (pseudo) set if user has valid locale definition */
   OPT_NO_CURSES,          /**< (pseudo) when sending in batch mode */
   OPT_SEARCH_REVERSE,     /**< (pseudo) used by ci_search_command */
   OPT_MSG_ERR,            /**< (pseudo) used by mutt_error/mutt_message */

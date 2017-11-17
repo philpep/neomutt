@@ -25,7 +25,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include "lib/lib.h"
+#include "mutt/mutt.h"
 #include "mutt.h"
 #include "alias.h"
 #include "attach.h"
@@ -163,9 +163,9 @@ void mutt_attach_bounce(FILE *fp, struct Header *hdr, struct AttachCtx *actx, st
   }
 
   if (p)
-    strfcpy(prompt, _("Bounce message to: "), sizeof(prompt));
+    mutt_str_strfcpy(prompt, _("Bounce message to: "), sizeof(prompt));
   else
-    strfcpy(prompt, _("Bounce tagged messages to: "), sizeof(prompt));
+    mutt_str_strfcpy(prompt, _("Bounce tagged messages to: "), sizeof(prompt));
 
   buf[0] = '\0';
   if (mutt_get_field(prompt, buf, sizeof(buf), MUTT_ALIAS) || buf[0] == '\0')
@@ -202,10 +202,10 @@ void mutt_attach_bounce(FILE *fp, struct Header *hdr, struct AttachCtx *actx, st
   {
     mutt_simple_format(prompt, sizeof(prompt) - 4, 0, MuttMessageWindow->cols - EXTRA_SPACE,
                        FMT_LEFT, 0, prompt, sizeof(prompt), 0);
-    safe_strcat(prompt, sizeof(prompt), "...?");
+    mutt_str_strcat(prompt, sizeof(prompt), "...?");
   }
   else
-    safe_strcat(prompt, sizeof(prompt), "?");
+    mutt_str_strcat(prompt, sizeof(prompt), "?");
 
   if (query_quadoption(OPT_BOUNCE, prompt) != MUTT_YES)
   {
@@ -339,11 +339,11 @@ static void include_header(int quote, FILE *ifp, struct Header *hdr, FILE *ofp, 
   if (quote)
   {
     if (_prefix)
-      strfcpy(prefix, _prefix, sizeof(prefix));
+      mutt_str_strfcpy(prefix, _prefix, sizeof(prefix));
     else if (!option(OPT_TEXT_FLOWED))
-      _mutt_make_string(prefix, sizeof(prefix), NONULL(IndentString), Context, hdr, 0);
+      mutt_make_string_flags(prefix, sizeof(prefix), NONULL(IndentString), Context, hdr, 0);
     else
-      strfcpy(prefix, ">", sizeof(prefix));
+      mutt_str_strfcpy(prefix, ">", sizeof(prefix));
 
     chflags |= CH_PREFIX;
   }
@@ -418,7 +418,7 @@ static void attach_forward_bodies(FILE *fp, struct Header *hdr, struct AttachCtx
   mutt_make_forward_subject(tmphdr->env, Context, parent_hdr);
 
   mutt_mktemp(tmpbody, sizeof(tmpbody));
-  tmpfp = safe_fopen(tmpbody, "w");
+  tmpfp = mutt_file_fopen(tmpbody, "w");
   if (!tmpfp)
   {
     mutt_error(_("Can't open temporary file %s."), tmpbody);
@@ -433,10 +433,10 @@ static void attach_forward_bodies(FILE *fp, struct Header *hdr, struct AttachCtx
   if (option(OPT_FORWARD_QUOTE))
   {
     if (!option(OPT_TEXT_FLOWED))
-      _mutt_make_string(prefix, sizeof(prefix), NONULL(IndentString), Context,
-                        parent_hdr, 0);
+      mutt_make_string_flags(prefix, sizeof(prefix), NONULL(IndentString),
+                             Context, parent_hdr, 0);
     else
-      strfcpy(prefix, ">", sizeof(prefix));
+      mutt_str_strfcpy(prefix, ">", sizeof(prefix));
   }
 
   include_header(option(OPT_FORWARD_QUOTE), parent_fp, parent_hdr, tmpfp, prefix);
@@ -524,7 +524,7 @@ static void attach_forward_bodies(FILE *fp, struct Header *hdr, struct AttachCtx
 
   mutt_forward_trailer(Context, parent_hdr, tmpfp);
 
-  safe_fclose(&tmpfp);
+  mutt_file_fclose(&tmpfp);
   tmpfp = NULL;
 
   /* now that we have the template, send it. */
@@ -535,8 +535,8 @@ bail:
 
   if (tmpfp)
   {
-    safe_fclose(&tmpfp);
-    mutt_unlink(tmpbody);
+    mutt_file_fclose(&tmpfp);
+    mutt_file_unlink(tmpbody);
   }
 
   mutt_free_header(&tmphdr);
@@ -590,7 +590,7 @@ static void attach_forward_msgs(FILE *fp, struct Header *hdr,
     /* no MIME encapsulation */
 
     mutt_mktemp(tmpbody, sizeof(tmpbody));
-    tmpfp = safe_fopen(tmpbody, "w");
+    tmpfp = mutt_file_fopen(tmpbody, "w");
     if (!tmpfp)
     {
       mutt_error(_("Can't create %s."), tmpbody);
@@ -617,7 +617,7 @@ static void attach_forward_msgs(FILE *fp, struct Header *hdr,
     if (cur)
     {
       mutt_forward_intro(Context, cur->hdr, tmpfp);
-      _mutt_copy_message(tmpfp, fp, cur->hdr, cur->hdr->content, cmflags, chflags);
+      mutt_copy_message_fp(tmpfp, fp, cur->hdr, cmflags, chflags);
       mutt_forward_trailer(Context, cur->hdr, tmpfp);
     }
     else
@@ -627,13 +627,13 @@ static void attach_forward_msgs(FILE *fp, struct Header *hdr,
         if (actx->idx[i]->content->tagged)
         {
           mutt_forward_intro(Context, actx->idx[i]->content->hdr, tmpfp);
-          _mutt_copy_message(tmpfp, actx->idx[i]->fp, actx->idx[i]->content->hdr,
-                             actx->idx[i]->content->hdr->content, cmflags, chflags);
+          mutt_copy_message_fp(tmpfp, actx->idx[i]->fp,
+                               actx->idx[i]->content->hdr, cmflags, chflags);
           mutt_forward_trailer(Context, actx->idx[i]->content->hdr, tmpfp);
         }
       }
     }
-    safe_fclose(&tmpfp);
+    mutt_file_fclose(&tmpfp);
   }
   else if (rc == MUTT_YES) /* do MIME encapsulation - we don't need to do much here */
   {
@@ -722,8 +722,8 @@ static int attach_reply_envelope_defaults(struct Envelope *env, struct AttachCtx
   {
     /* in case followup set Newsgroups: with Followup-To: if it present */
     if (!env->newsgroups && curenv &&
-        (mutt_strcasecmp(curenv->followup_to, "poster") != 0))
-      env->newsgroups = safe_strdup(curenv->followup_to);
+        (mutt_str_strcasecmp(curenv->followup_to, "poster") != 0))
+      env->newsgroups = mutt_str_strdup(curenv->followup_to);
   }
   else
 #endif
@@ -785,7 +785,7 @@ static void attach_include_reply(FILE *fp, FILE *tmpfp, struct Header *cur, int 
     cmflags |= MUTT_CM_WEED;
   }
 
-  _mutt_copy_message(tmpfp, fp, cur, cur->content, cmflags, chflags);
+  mutt_copy_message_fp(tmpfp, fp, cur, cmflags, chflags);
   mutt_make_post_indent(Context, cur, tmpfp);
 }
 
@@ -853,7 +853,7 @@ void mutt_attach_reply(FILE *fp, struct Header *hdr, struct AttachCtx *actx,
   }
 
   mutt_mktemp(tmpbody, sizeof(tmpbody));
-  tmpfp = safe_fopen(tmpbody, "w");
+  tmpfp = mutt_file_fopen(tmpbody, "w");
   if (!tmpfp)
   {
     mutt_error(_("Can't create %s."), tmpbody);
@@ -882,10 +882,10 @@ void mutt_attach_reply(FILE *fp, struct Header *hdr, struct AttachCtx *actx,
     st.fpout = tmpfp;
 
     if (!option(OPT_TEXT_FLOWED))
-      _mutt_make_string(prefix, sizeof(prefix), NONULL(IndentString), Context,
-                        parent_hdr, 0);
+      mutt_make_string_flags(prefix, sizeof(prefix), NONULL(IndentString),
+                             Context, parent_hdr, 0);
     else
-      strfcpy(prefix, ">", sizeof(prefix));
+      mutt_str_strfcpy(prefix, ">", sizeof(prefix));
 
     st.prefix = prefix;
     st.flags = MUTT_CHARCONV;
@@ -926,12 +926,12 @@ void mutt_attach_reply(FILE *fp, struct Header *hdr, struct AttachCtx *actx,
         copy_problematic_attachments(&tmphdr->content, actx, 0) == NULL)
     {
       mutt_free_header(&tmphdr);
-      safe_fclose(&tmpfp);
+      mutt_file_fclose(&tmpfp);
       return;
     }
   }
 
-  safe_fclose(&tmpfp);
+  mutt_file_fclose(&tmpfp);
 
   if (ci_send_message(flags, tmphdr, tmpbody, NULL,
                       parent_hdr ? parent_hdr : (cur ? cur->hdr : NULL)) == 0)

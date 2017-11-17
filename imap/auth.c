@@ -22,15 +22,26 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* IMAP login/authentication code */
+/**
+ * @page imap_auth IMAP authenticator multiplexor
+ *
+ * IMAP authenticator multiplexor
+ *
+ * | Function            | Description
+ * | :------------------ | :-------------------------------------------------
+ * | imap_authenticate() | Authenticate to an IMAP server
+ */
 
 #include "config.h"
 #include <string.h>
-#include "lib/lib.h"
+#include "mutt/mutt.h"
 #include "auth.h"
 #include "globals.h"
 #include "protos.h"
 
+/**
+ * imap_authenticators - Accepted authentication methods
+ */
 static const struct ImapAuth imap_authenticators[] = {
   { imap_auth_plain, "plain" },
 #ifdef USE_SASL
@@ -52,6 +63,8 @@ static const struct ImapAuth imap_authenticators[] = {
 
 /**
  * imap_authenticate - Authenticate to an IMAP server
+ * @param idata Server data
+ * @retval num Result, e.g. #IMAP_AUTH_SUCCESS
  *
  * Attempt to authenticate using either user-specified authentication method if
  * specified, or any.
@@ -67,7 +80,7 @@ int imap_authenticate(struct ImapData *idata)
   if (ImapAuthenticators && *ImapAuthenticators)
   {
     /* Try user-specified list of authentication methods */
-    methods = safe_strdup(ImapAuthenticators);
+    methods = mutt_str_strdup(ImapAuthenticators);
 
     for (method = methods; method; method = delim)
     {
@@ -82,7 +95,8 @@ int imap_authenticate(struct ImapData *idata)
 
       while (authenticator->authenticate)
       {
-        if (!authenticator->method || (mutt_strcasecmp(authenticator->method, method) == 0))
+        if (!authenticator->method ||
+            (mutt_str_strcasecmp(authenticator->method, method) == 0))
           if ((r = authenticator->authenticate(idata, method)) != IMAP_AUTH_UNAVAIL)
           {
             FREE(&methods);
